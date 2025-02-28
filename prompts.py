@@ -17,3 +17,18 @@ prompt_dos_Horarios = """
         os horario de funcionamento são das 18-22, e aos finais de semana, 19-20
         
         """
+
+prompt_do_Cardapio = """ 
+
+
+
+"""
+
+
+prompt_da_Entrega = """
+
+
+
+"""
+
+
