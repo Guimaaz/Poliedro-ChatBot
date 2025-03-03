@@ -1,5 +1,5 @@
 import google.generativeai as genai
-from prompts import prompt_restaurante, prompt_dos_Horarios
+from prompts import prompt_restaurante, prompt_dos_Horarios, prompt_do_Cardapio
 
 genai.configure(api_key="AIzaSyDhE12w58FQQQHr2jMHh1Jsl2ZmipQ65qA")
 
@@ -7,9 +7,9 @@ genai.configure(api_key="AIzaSyDhE12w58FQQQHr2jMHh1Jsl2ZmipQ65qA")
 model = genai.GenerativeModel("gemini-1.5-flash")
 
 def chatbot():
-    print("Sou um chat bot especializado em atendimento do restaurante poliedro, em que posso te ajudar?.\n")
+    print("Ola, tudo bem?, sou um chat bot especializado em atendimento do restaurante poliedro, em que posso te ajudar?.\n")
 
-    chat_history = [ ]
+    chat_history = []
 
 
         # dentro de history, posso limitar tambem sem o prompt
@@ -35,7 +35,7 @@ def chatbot():
 
 
         # response = model.generate_content(chat_history, stream=True) 
-        response = model.generate_content([{"role": "user", "parts": [prompt_restaurante + prompt_dos_Horarios + user_input]}], stream=True)
+        response = model.generate_content([{"role": "user", "parts": [prompt_restaurante + prompt_dos_Horarios + prompt_do_Cardapio + user_input]}], stream=True)
 
 
         print("Bot:", end=" ")
