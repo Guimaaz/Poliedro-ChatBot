@@ -23,7 +23,7 @@ def chatbot():
         user_input = input("Você: ")
 
         if user_input.lower() == "sair":
-            print(" Encerrando o chatbot. Até logo!")
+            print("Até mais! Popoli estará a disposição caso tive alguma duvida")
             break
 
       
@@ -38,7 +38,7 @@ def chatbot():
         response = model.generate_content([{"role": "user", "parts": [prompt_restaurante + prompt_dos_Horarios + prompt_do_Cardapio + user_input]}], stream=True)
 
 
-        print("Bot:", end=" ")
+        print("Popoli:", end=" ")
         bot_reply = ""
 
        
