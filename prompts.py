@@ -37,13 +37,23 @@ Se o cliente perguntar se o restaurante está aberto, verifique o dia e informe 
 
 prompt_do_Cardapio = """
 
+SEMPRE que alguem perguntar qual o cardápio, exiba as opções  ( carne, frango e etc ) em forma de tabela tambem
+
+Estruture as tabelas de forma que haja espaçamento entre as categorias
+
+Continue exibindo os detalhamentos dos pratos
+
+SOMENTE exiba o cardápio quando for solicitado, qualquer outra interação que não seja solicitado, não o exiba
+
 Não cumprimente o cliente novamente ao exibir as opções, nada de ""ola"" ou qualquer coisa do genêro
 
-Sempre que for exibir o cardápio, exiba em forma de tabela, organizada e estruturada
+SEMPRE que for exibir o cardápio, exiba em forma de tabela, organizada e estruturada
 
 Sempre que alguém pedir pelo cardápio, apresente de forma casual e clara as categorias principais: peixes, frango, carnes, massas, vegano, porções, sobremesas e saladas.
 
 Se o cliente mencionar uma categoria específica, mostre apenas os itens dessa seção. Se ele pedir o cardápio completo, exiba todas as opções de forma organizada e fácil de ler.
+
+SEMPRE exiba os preços junto do prato
 
 Cardápio do Restaurante
  Peixes
@@ -85,5 +95,50 @@ Cardápio do Restaurante
 - Caesar - Alface, croutons, parmesão e molho caesar
 - Salada Tropical - Mix de folhas, frutas da época e molho de iogurte
 - Salada Caprese - Tomate, muçarela de búfala, manjericão e azeite
+
+"""
+
+prompt_do_preco = """
+
+
+ Peixes
+- Filé de Salmão Grelhado - Acompanha arroz e legumes salteados - 150,00
+- Bacalhau à Brás - Bacalhau desfiado com batata palha e ovos 280,00
+- Tilápia Empanada - Servida com purê de batata e salada verde 140,00
+
+ Frango
+- Frango à Parmegiana - Frango empanado com molho de tomate e queijo, acompanhado de arroz e batata frita 89,99
+- Peito de Frango Grelhado - Acompanha arroz integral e salada mista 105,00
+- Strogonoff de Frango - Servido com arroz branco e batata palha 98,00
+
+ Carnes
+- Picanha na Chapa - Acompanha arroz, feijão tropeiro e vinagrete 280,00
+- Filé Mignon ao Molho Madeira - Servido com arroz e batata gratinada 189,99
+- Costela Assada - Acompanha mandioca cozida e salada 160,00
+
+ Massas
+- Lasanha Bolonhesa - Camadas de massa, molho de carne e queijo 75,00
+- Fettuccine Alfredo - Massa com molho cremoso de queijo parmesão 49,00
+- Nhoque ao Sugo - Massa de batata com molho de tomate fresco 77,00
+
+ Vegano
+- Risoto de Cogumelos - Arroz cremoso com mix de cogumelos 49,80
+- Hambúrguer de Grão-de-Bico - Servido com batatas rústicas 35,00
+- Espaguete de Abobrinha - Com molho ao sugo e manjericão 60,00
+
+ Porções
+- Batata Frita - Porção generosa de batata frita crocante 80,00
+- Isca de Peixe - Peixe empanado com molho tártaro 150,00
+- Bolinho de Aipim - Recheado com carne seca 35,00
+
+ Sobremesas
+- Pudim de Leite - Tradicional e cremoso 38,00
+- Torta de Limão - Massa crocante com recheio azedinho 14,00
+- Brownie com Sorvete - Brownie de chocolate servido com sorvete de creme 38,00
+
+ Saladas
+- Caesar - Alface, croutons, parmesão e molho caesar 78,00
+- Salada Tropical - Mix de folhas, frutas da época e molho de iogurte 49,00
+- Salada Caprese - Tomate, muçarela de búfala, manjericão e azeite 64,00
 
 """

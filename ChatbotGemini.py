@@ -1,5 +1,5 @@
 import google.generativeai as genai
-from prompts import prompt_restaurante, prompt_dos_Horarios, prompt_do_Cardapio
+from prompts import * 
 
 genai.configure(api_key="AIzaSyDhE12w58FQQQHr2jMHh1Jsl2ZmipQ65qA")
 
@@ -35,7 +35,7 @@ def chatbot():
 
 
         # response = model.generate_content(chat_history, stream=True) 
-        response = model.generate_content([{"role": "user", "parts": [prompt_restaurante + prompt_dos_Horarios + prompt_do_Cardapio + user_input]}], stream=True)
+        response = model.generate_content([{"role": "user", "parts": [prompt_restaurante + prompt_dos_Horarios + prompt_do_Cardapio + prompt_do_preco+ user_input]}], stream=True)
 
 
         print("Popoli:", end=" ")
