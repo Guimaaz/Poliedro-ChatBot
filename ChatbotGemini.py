@@ -34,7 +34,7 @@ def chatbot():
         
 
 
-        # response = model.generate_content(chat_history, stream=True) 
+        # response = model.generate_content(chat_history, stream=True)  Padrão
         response = model.generate_content([{"role": "user", "parts": [prompt_restaurante + prompt_dos_Horarios + prompt_do_Cardapio + prompt_do_preco+ user_input]}], stream=True)
 
 
