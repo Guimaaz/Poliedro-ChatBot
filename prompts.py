@@ -1,3 +1,6 @@
+from BancoPedidos import *
+
+
 prompt_restaurante = """
 
 
@@ -142,3 +145,5 @@ prompt_do_preco = """
 - Salada Caprese - Tomate, muçarela de búfala, manjericão e azeite 64,00
 
 """
+
+prompt_banco  = """ Sempre que alguem falar que gostaria de fazer o pedido ou algo do genero voce solicita o numero da pessoa, e assim que ela dizer o numero, voce o armazena, lembrando que o numero deverá ser em formato (XX) XXXXX-XXXX, e voce confirma que armazenou o numero dela e o exibe  """

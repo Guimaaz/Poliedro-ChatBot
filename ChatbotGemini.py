@@ -1,5 +1,6 @@
 import google.generativeai as genai
 from prompts import * 
+from BancoPedidos import  *
 
 genai.configure(api_key="AIzaSyDhE12w58FQQQHr2jMHh1Jsl2ZmipQ65qA")
 
@@ -35,7 +36,7 @@ def chatbot():
 
 
         # response = model.generate_content(chat_history, stream=True)  Padrão
-        response = model.generate_content([{"role": "user", "parts": [prompt_restaurante + prompt_dos_Horarios + prompt_do_Cardapio + prompt_do_preco+ user_input]}], stream=True)
+        response = model.generate_content([{"role": "user", "parts": [prompt_restaurante + prompt_dos_Horarios + prompt_do_Cardapio + prompt_do_preco + prompt_banco+ user_input]}], stream=True)
 
 
         print("Popoli:", end=" ")
