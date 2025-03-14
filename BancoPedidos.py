@@ -32,11 +32,12 @@ def PedidosArmazenados(numero_cliente, pedido):
 
     conexao = sqlite3.connect("chatbot.db")
     cursor = conexao.cursor()
-    cursor.execute("INSERT INTO pedidos (numero_cliente, pedido) VALUES (?, ?)", (numero_cliente, pedido))
+    cursor.execute("INSERT INTO pedidos (numero_cliente, pedido) VALUES (?, ?)", (numero_cliente, pedido))  # Alterado para "pedidos"
 
     conexao.commit()
     conexao.close()
     print("Pedido registrado com sucesso!")
+
 
 # Buscar pedidos no banco de dados
 def BuscarPedidos(numero_cliente):
