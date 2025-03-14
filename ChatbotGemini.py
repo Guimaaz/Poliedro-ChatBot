@@ -26,7 +26,7 @@ def chatbot():
         if user_input.lower() == "sair":
             print("Até mais! Popoli estará a disposição caso tive alguma duvida")
             break
-
+        
       
         chat_history.append({"role": "user", "parts": [user_input]})
 
@@ -36,7 +36,7 @@ def chatbot():
 
 
         # response = model.generate_content(chat_history, stream=True)  Padrão
-        response = model.generate_content([{"role": "user", "parts": [prompt_restaurante + prompt_dos_Horarios + prompt_do_Cardapio + prompt_do_preco + prompt_banco+ user_input]}], stream=True)
+        response = model.generate_content([{"role": "user", "parts": [prompt_restaurante + prompt_dos_Horarios + prompt_do_Cardapio + prompt_do_preco + prompt_banco + user_input]}], stream=True)
 
 
         print("Popoli:", end=" ")
