@@ -1,40 +1,59 @@
 import sqlite3
+import re
 
-# conexão com o banco 
-def CreateDatabase () :
+# Criação do banco de dados
+def CreateDatabase():
     conexao = sqlite3.connect("chatbot.db")
     cursor = conexao.cursor()
 
-    #criação da tabela
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS pedidos (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    numero_cliente TEXT NOT NULL,
-    pedido TEXT NOT NULL,
-    data TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-)
-''')
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        numero_cliente TEXT NOT NULL,
+        pedido TEXT NOT NULL,
+        data TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+    ''')
 
     conexao.commit()
     conexao.close()
 
+
+# Validação do número de telefone
+def validar_numero(numero_cliente):
+    padrao = r"\(\d{2}\) \d{5}-\d{4}"
+    return re.match(padrao, numero_cliente)
+
+# Armazenar pedido no banco de dados
 def PedidosArmazenados(numero_cliente, pedido):
-    print(f"Armazenando pedido: {pedido} para {numero_cliente}")
+    if not validar_numero(numero_cliente):
+        print("Número inválido! Use o formato (XX) XXXXX-XXXX.")
+        return
+
     conexao = sqlite3.connect("chatbot.db")
     cursor = conexao.cursor()
-    cursor.execute("INSERT INTO pedidos (numero_cliente, pedido) VALUES (?,?)", (numero_cliente, pedido))
+    cursor.execute("INSERT INTO pedidos (numero_cliente, pedido) VALUES (?, ?)", (numero_cliente, pedido))
+
     conexao.commit()
     conexao.close()
+    print("Pedido registrado com sucesso!")
 
+# Buscar pedidos no banco de dados
 def BuscarPedidos(numero_cliente):
-    print(f"Buscando pedidos para: {numero_cliente}")
     conexao = sqlite3.connect("chatbot.db")
     cursor = conexao.cursor()
-    cursor.execute("SELECT * FROM pedidos WHERE numero_cliente = ?", (numero_cliente,))
+    cursor.execute("SELECT pedido, data FROM pedidos WHERE numero_cliente = ?", (numero_cliente,))
     pedidos = cursor.fetchall()
     conexao.close()
-    print(f"Pedidos encontrados: {pedidos}")
-    return pedidos
+
+    if not pedidos:
+        return "Nenhum pedido encontrado para esse número."
+
+    return "\n".join([f"Pedido: {p[0]} - Data: {p[1]}" for p in pedidos])
+
+
+
+
 
 
 

@@ -146,11 +146,4 @@ prompt_do_preco = """
 
 """
 
-prompt_banco = """
-Se o cliente mencionar 'fazer um pedido', peça o número de telefone no formato (XX) XXXXX-XXXX e o item desejado.
-Use a função PedidosArmazenados(numero_cliente, pedido) para salvar o pedido no banco de dados.
-
-Se o cliente perguntar sobre 'pedidos anteriores' ou 'ver o que já pedi', use a função BuscarPedidos(numero_cliente).
-Se houver pedidos, informe-os claramente. Caso contrário, diga que não há registros anteriores.
-"""
-
+prompt_dePedidos = """ Todas as vezes que o usuários falar sobre pedidos, seja pedir ou consultar, ou qualquer coisa do genero, nao exiba nenhuma mensagem, nem amigavel, nem profissional, deixei que as funções ja existentes façam isso """
