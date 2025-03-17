@@ -5,7 +5,7 @@ Instituto Mauá de Tecnologia (IMT) - Primeiro Semestre 2025
 
 Eike --> 24.00682-3 --> @.dev-eike
 
-Gustavo --> 24. --> @.Guimaaz
+Gustavo --> 24.00805-2 --> @.Guimaaz
 
 Guilherme Duarte --> 24.00888-5 --> @guimduarte.
 
