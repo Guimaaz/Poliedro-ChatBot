@@ -146,4 +146,16 @@ prompt_do_preco = """
 
 """
 
-prompt_dePedidos = """ Todas as vezes que o usuários falar sobre pedidos, seja pedir ou consultar, ou qualquer coisa do genero, nao exiba nenhuma mensagem, nem amigavel, nem profissional, deixei que as funções ja existentes façam isso """
+prompt_dePedidos = """
+
+(pedir, fazer pedido, pedir algo, realizar pedido, iniciar pedido, fazer o pedido, fazer um pedido, um pedido, realizar um pedido)
+Se detectar alguma dessas expressões ou variações, chame a função criada para armazenar pedidos
+"""
+
+prompt_deBusca = """
+
+(consultar o pedido, consultar pedido, ver pedido, ver pedidos anteriores, ver o que ja pedi, ver o que pedi, consulta pedido, consulta o pedido, ver o pedido, verificar o pedido, verificar pedido)
+
+Sempre que alguma dessas palavras ou variacoes aparecer, peca pelo telefone do cliente 
+
+"""
