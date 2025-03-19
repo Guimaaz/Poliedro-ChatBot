@@ -3,7 +3,7 @@ from prompts import *
 from BancoPedidos import *
 import re
 
-# Configuração da API do Gemini
+#apikey
 genai.configure(api_key="AIzaSyDhE12w58FQQQHr2jMHh1Jsl2ZmipQ65qA")
 
 model = genai.GenerativeModel("gemini-1.5-flash")
@@ -11,12 +11,12 @@ model = genai.GenerativeModel("gemini-1.5-flash")
 def extrair_intencao(texto):
     """
     Extrai a intenção do modelo a partir do texto gerado.
-    Ele deve conter INTENÇÃO: FAZER_PEDIDO ou INTENÇÃO: CONSULTAR_PEDIDO
+    Ele deve conter INTENÇÃO: FAZER_PEDIDO ou INTENÇÃO: CONSULTAR_PEDIDO.
     """
-    match = re.search(r'INTENÇÃO:\s*(FAZER_PEDIDO|CONSULTAR_PEDIDO|NENHUMA)', texto, re.IGNORECASE)
+    match = re.search(r'INTENÇÃO:\s*(FAZER_PEDIDO|CONSULTAR_PEDIDO)', texto, re.IGNORECASE)
     if match:
         return match.group(1).upper()
-    return "NENHUMA"
+    return None  
 
 def iniciar_chat():
     print("Olá, tudo bem? Sou o Popoli, assistente do restaurante Poliedro. Em que posso te ajudar?")
@@ -32,13 +32,14 @@ def iniciar_chat():
 
         chat_history.append({"role": "user", "parts": [user_input]})
 
-        # Criando um prompt mais estruturado
+       
         prompt_completo = (
             prompt_restaurante + prompt_dos_Horarios + prompt_do_Cardapio + 
             prompt_do_preco + prompt_intencao +
             "\n\nBaseado na conversa acima, identifique a intenção do usuário.\n"
-            "Responda no seguinte formato (sem explicar):\n\n"
-            "**INTENÇÃO: FAZER_PEDIDO** ou **INTENÇÃO: CONSULTAR_PEDIDO** ou **INTENÇÃO: CONVERSAR**"
+            "Se o usuário deseja fazer um pedido, responda com: **INTENÇÃO: FAZER_PEDIDO**\n"
+            "Se o usuário deseja consultar um pedido, responda com: **INTENÇÃO: CONSULTAR_PEDIDO**\n"
+            "Caso contrário, responda normalmente de forma amigável e interativa, sem mencionar a intenção."
         )
 
         # Gera a resposta
@@ -47,31 +48,30 @@ def iniciar_chat():
         ])
 
         bot_reply = response.text.strip()
-
-        print(f"Popoli: {bot_reply}\n")
-
-       
-
-        # Extrai a intenção corretamente
         intencao = extrair_intencao(bot_reply)
         
-        if intencao == "FAZER_PEDIDO":
-            numero_cliente = input("Por favor, informe seu número de telefone (formato (XX) XXXXX-XXXX): ")
-            if not validar_numero(numero_cliente):
-                print("Número inválido! Use o formato correto.")
-                continue
+        if intencao:
+            if intencao == "FAZER_PEDIDO":
+                print("Popoli: Certo! Vamos fazer seu pedido. Por favor, informe seu número de telefone.")
+                numero_cliente = input("Número (formato (XX) XXXXX-XXXX): ")
+                if not validar_numero(numero_cliente):
+                    print("Número inválido! Solicite para fazer um pedido novamente e coloque o numero correto")
+                    continue
 
-            pedido = input("Qual o seu pedido? ")
-            PedidosArmazenados(numero_cliente, pedido)
-            print("Pedido registrado com sucesso!")
+                pedido = input("Qual o seu pedido? ")
+                PedidosArmazenados(numero_cliente, pedido)
+                print("Popoli: Pedido registrado com sucesso!")
+            elif intencao == "CONSULTAR_PEDIDO":
+                print("Popoli: Claro! Para consultar seu pedido, preciso do seu número de telefone.")
+                numero_cliente = input("Número (formato (XX) XXXXX-XXXX): ")
+                if not validar_numero(numero_cliente):
+                    print("Número inválido! Solicite para consultar os pedidos novamente e coloque o numero correto")
+                    continue
 
-        elif intencao == "CONSULTAR_PEDIDO":
-            numero_cliente = input("Informe seu número de telefone para consultar os pedidos (formato (XX) XXXXX-XXXX): ")
-            if not validar_numero(numero_cliente):
-                print("Número inválido! Use o formato correto.")
-                continue
-
-            resultado = BuscarPedidos(numero_cliente)
-            print(f"Seus pedidos: {resultado}")
+                resultado = BuscarPedidos(numero_cliente)
+                print(f"Popoli: Seus pedidos: {resultado}")
+        else:
+           
+            print(f"Popoli: {bot_reply}")
         
         chat_history.append({"role": "model", "parts": [bot_reply]})
