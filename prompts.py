@@ -146,16 +146,12 @@ prompt_do_preco = """
 
 """
 
-prompt_dePedidos = """
+prompt_intencao = """
+Sua tarefa é identificar a intenção da mensagem do cliente. Existem duas intenções principais:
+1. FAZER_PEDIDO: Quando o cliente deseja fazer um pedido de comida.
+2. CONSULTAR_PEDIDO: Quando o cliente deseja verificar um pedido já feito.
 
-(pedir, fazer pedido, pedir algo, realizar pedido, iniciar pedido, fazer o pedido, fazer um pedido, um pedido, realizar um pedido)
-Se detectar alguma dessas expressões ou variações, chame a função criada para armazenar pedidos
+Responda apenas com uma dessas palavras-chave: FAZER_PEDIDO ou CONSULTAR_PEDIDO.  
+Se a intenção do cliente não for nenhuma dessas, responda com 'NENHUMA'.
 """
 
-prompt_deBusca = """
-
-(consultar o pedido, consultar pedido, ver pedido, ver pedidos anteriores, ver o que ja pedi, ver o que pedi, consulta pedido, consulta o pedido, ver o pedido, verificar o pedido, verificar pedido)
-
-Sempre que alguma dessas palavras ou variacoes aparecer, peca pelo telefone do cliente 
-
-"""

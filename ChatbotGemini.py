@@ -3,24 +3,20 @@ from prompts import *
 from BancoPedidos import *
 import re
 
+# Configuração da API do Gemini
 genai.configure(api_key="AIzaSyDhE12w58FQQQHr2jMHh1Jsl2ZmipQ65qA")
 
 model = genai.GenerativeModel("gemini-1.5-flash")
 
-# Extração dinâmica das palavras-chave do prompt_dePedidos
-match = re.search(r"\((.*?)\)", prompt_dePedidos)  # Captura o conteúdo dentro dos parênteses
-if match:
-    palavras_pedido = match.group(1).split(", ")  # Converte a lista para uma lista Python
-    regex_pedidos = r"\b(" + "|".join(map(str.strip, palavras_pedido)) + r")\b"
-else:
-    regex_pedidos = r""  # Caso algo dê errado, evita erro de regex
-
-match_busca = re.search(r"\((.*?)\)",prompt_deBusca)
-if match_busca:
-    palavras_busca = match_busca.group(1).split(",")
-    regex_busca = r"\b(" + "|".join(map(str.strip, palavras_busca)) + r")\b"
-else :
-    regex_busca = r""
+def extrair_intencao(texto):
+    """
+    Extrai a intenção do modelo a partir do texto gerado.
+    Ele deve conter INTENÇÃO: FAZER_PEDIDO ou INTENÇÃO: CONSULTAR_PEDIDO
+    """
+    match = re.search(r'INTENÇÃO:\s*(FAZER_PEDIDO|CONSULTAR_PEDIDO|NENHUMA)', texto, re.IGNORECASE)
+    if match:
+        return match.group(1).upper()
+    return "NENHUMA"
 
 def iniciar_chat():
     print("Olá, tudo bem? Sou o Popoli, assistente do restaurante Poliedro. Em que posso te ajudar?")
@@ -36,22 +32,30 @@ def iniciar_chat():
 
         chat_history.append({"role": "user", "parts": [user_input]})
 
-        # Gera a resposta com base nos prompts e na entrada do usuário
+        # Criando um prompt mais estruturado
+        prompt_completo = (
+            prompt_restaurante + prompt_dos_Horarios + prompt_do_Cardapio + 
+            prompt_do_preco + prompt_intencao +
+            "\n\nBaseado na conversa acima, identifique a intenção do usuário.\n"
+            "Responda no seguinte formato (sem explicar):\n\n"
+            "**INTENÇÃO: FAZER_PEDIDO** ou **INTENÇÃO: CONSULTAR_PEDIDO** ou **INTENÇÃO: CONVERSAR**"
+        )
+
+        # Gera a resposta
         response = model.generate_content([
-            {"role": "user", "parts": [prompt_restaurante + prompt_dos_Horarios + prompt_do_Cardapio + prompt_do_preco  + prompt_dePedidos + prompt_deBusca + user_input]}
-        ], stream=True)
+            {"role": "user", "parts": [prompt_completo + user_input]}
+        ])
 
-        print("Popoli:", end=" ")
-        bot_reply = ""
+        bot_reply = response.text.strip()
 
-        for chunk in response:
-            print(chunk.text, end="", flush=True)
-            bot_reply += chunk.text
+        print(f"Popoli: {bot_reply}\n")
 
-        print("\n")
+       
 
-        # Identifica e processa pedidos ou consultas ao banco de dados
-        if re.search(regex_pedidos, user_input.lower()):
+        # Extrai a intenção corretamente
+        intencao = extrair_intencao(bot_reply)
+        
+        if intencao == "FAZER_PEDIDO":
             numero_cliente = input("Por favor, informe seu número de telefone (formato (XX) XXXXX-XXXX): ")
             if not validar_numero(numero_cliente):
                 print("Número inválido! Use o formato correto.")
@@ -59,16 +63,15 @@ def iniciar_chat():
 
             pedido = input("Qual o seu pedido? ")
             PedidosArmazenados(numero_cliente, pedido)
-        
+            print("Pedido registrado com sucesso!")
 
-        elif re.search(regex_busca, user_input.lower()):
+        elif intencao == "CONSULTAR_PEDIDO":
             numero_cliente = input("Informe seu número de telefone para consultar os pedidos (formato (XX) XXXXX-XXXX): ")
-    
             if not validar_numero(numero_cliente):
                 print("Número inválido! Use o formato correto.")
-                continue  
-    
-            resultado = BuscarPedidos(numero_cliente)
-            print(resultado)
+                continue
 
-    chat_history.append({"role": "model", "parts": [bot_reply]})
+            resultado = BuscarPedidos(numero_cliente)
+            print(f"Seus pedidos: {resultado}")
+        
+        chat_history.append({"role": "model", "parts": [bot_reply]})
