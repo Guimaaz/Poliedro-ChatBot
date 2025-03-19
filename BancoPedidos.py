@@ -43,7 +43,7 @@ def PedidosArmazenados(numero_cliente, pedido):
 def BuscarPedidos(numero_cliente):
     conexao = sqlite3.connect("chatbot.db")
     cursor = conexao.cursor()
-    cursor.execute("SELECT pedido, data FROM pedidos WHERE numero_cliente = ?", (numero_cliente,))
+    cursor.execute("SELECT pedido, datetime(data, '-3 hours') FROM pedidos WHERE numero_cliente = ?", (numero_cliente,))
     pedidos = cursor.fetchall()
     conexao.close()
 
@@ -58,4 +58,7 @@ def BuscarPedidos(numero_cliente):
 
 
 
+
 CreateDatabase()
+
+
