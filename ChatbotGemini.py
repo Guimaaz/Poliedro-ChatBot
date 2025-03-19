@@ -5,7 +5,7 @@ import re
 import os
 from dotenv import load_dotenv
 
-
+#funções q "escondem a api" e puxam ela pelo .env usando o import os e o dotent load_dontenv
 load_dotenv(dotenv_path=".env")
 senha = os.getenv("API_KEY")
 genai.configure(api_key=senha)
