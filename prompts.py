@@ -147,9 +147,18 @@ prompt_do_preco = """
 """
 
 prompt_intencao = """
+<<<<<<< HEAD
 Sua tarefa é identificar a intenção da mensagem do cliente. Existem duas intenções principais:
 1. FAZER_PEDIDO: Quando o cliente deseja fazer um pedido de comida.
 2. CONSULTAR_PEDIDO: Quando o cliente deseja verificar um pedido já feito.
 Se a intenção do cliente não for nenhuma dessas, responda com normalmente.
+=======
+Sua tarefa é identificar a intenção da mensagem do cliente **apenas se ela indicar um pedido ou consulta**.  
+Caso o cliente esteja apenas conversando, não informe nenhuma intenção e continue a conversa naturalmente.  
+
+As intenções principais são:  
+1. **FAZER_PEDIDO** → Quando o cliente deseja fazer um pedido de comida.  
+2. **CONSULTAR_PEDIDO** → Quando o cliente deseja verificar um pedido já feito. 
+>>>>>>> 101316e34fe04b3b97145f1b1a300d269d279fd2
 """
 

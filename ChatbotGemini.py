@@ -11,16 +11,23 @@ model = genai.GenerativeModel("gemini-1.5-flash")
 def extrair_intencao(texto):
     """
     Extrai a intenção do modelo a partir do texto gerado.
+<<<<<<< HEAD
     Ele deve conter INTENÇÃO: FAZER_PEDIDO ou INTENÇÃO: CONSULTAR_PEDIDO.
+=======
+>>>>>>> 101316e34fe04b3b97145f1b1a300d269d279fd2
     """
     match = re.search(r'INTENÇÃO:\s*(FAZER_PEDIDO|CONSULTAR_PEDIDO)', texto, re.IGNORECASE)
     if match:
         return match.group(1).upper()
+<<<<<<< HEAD
     return None  
+=======
+    return None
+>>>>>>> 101316e34fe04b3b97145f1b1a300d269d279fd2
 
 def iniciar_chat():
     print("Olá, tudo bem? Sou o Popoli, assistente do restaurante Poliedro. Em que posso te ajudar?")
-
+    
     chat_history = []
 
     while True:
@@ -32,6 +39,7 @@ def iniciar_chat():
 
         chat_history.append({"role": "user", "parts": [user_input]})
 
+<<<<<<< HEAD
        
         prompt_completo = (
             prompt_restaurante + prompt_dos_Horarios + prompt_do_Cardapio + 
@@ -41,12 +49,16 @@ def iniciar_chat():
             "Se o usuário deseja consultar um pedido, responda com: **INTENÇÃO: CONSULTAR_PEDIDO**\n"
             "Caso contrário, responda normalmente de forma amigável e interativa, sem mencionar a intenção."
         )
+=======
+        prompt_completo = (
+            prompt_restaurante + prompt_dos_Horarios + prompt_do_Cardapio + 
+            prompt_do_preco + prompt_intencao )
+>>>>>>> 101316e34fe04b3b97145f1b1a300d269d279fd2
 
-        # Gera a resposta
         response = model.generate_content([
             {"role": "user", "parts": [prompt_completo + user_input]}
         ])
-
+        
         bot_reply = response.text.strip()
         intencao = extrair_intencao(bot_reply)
         
@@ -58,6 +70,7 @@ def iniciar_chat():
                     print("Número inválido! Solicite para fazer um pedido novamente e coloque o numero correto")
                     continue
 
+<<<<<<< HEAD
                 pedido = input("Qual o seu pedido? ")
                 PedidosArmazenados(numero_cliente, pedido)
                 print("Popoli: Pedido registrado com sucesso!")
@@ -75,3 +88,22 @@ def iniciar_chat():
             print(f"Popoli: {bot_reply}")
         
         chat_history.append({"role": "model", "parts": [bot_reply]})
+=======
+            pedido = input("Qual o seu pedido? ")
+            PedidosArmazenados(numero_cliente, pedido)
+            print("Pedido registrado com sucesso!")
+        
+        elif intencao == "CONSULTAR_PEDIDO":
+            numero_cliente = input("Informe seu número de telefone para consultar os pedidos (formato (XX) XXXXX-XXXX): ")
+            if not validar_numero(numero_cliente):
+                print("Número inválido! Use o formato correto.")
+                continue
+
+            resultado = BuscarPedidos(numero_cliente)
+            print(f"Seus pedidos: {resultado}")
+        
+        else:
+            print(f"Popoli: {bot_reply}\n")
+        
+        chat_history.append({"role": "model", "parts": [bot_reply]})
+>>>>>>> 101316e34fe04b3b97145f1b1a300d269d279fd2
