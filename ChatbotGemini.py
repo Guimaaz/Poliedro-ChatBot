@@ -59,7 +59,8 @@ def iniciar_chat():
 
                 pedido = input("Qual o seu pedido? ")
                 PedidosArmazenados(numero_cliente, pedido)
-                print("Popoli: Pedido registrado com sucesso!")
+                
+                
             elif intencao == "CONSULTAR_PEDIDO":
                 print("Popoli: Claro! Para consultar seu pedido, preciso do seu número de telefone.")
                 numero_cliente = input("Número (formato (XX) XXXXX-XXXX): ")
@@ -68,7 +69,7 @@ def iniciar_chat():
                     continue
 
                 resultado = BuscarPedidos(numero_cliente)
-                print(f"Popoli: Seus pedidos: {resultado}")
+                print(resultado)
         else:
            
             print(f"Popoli: {bot_reply}")
