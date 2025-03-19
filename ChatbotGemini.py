@@ -2,9 +2,13 @@ import google.generativeai as genai
 from prompts import * 
 from BancoPedidos import *
 import re
+import os
+from dotenv import load_dotenv
 
-#apikey
-genai.configure(api_key="AIzaSyDhE12w58FQQQHr2jMHh1Jsl2ZmipQ65qA")
+
+load_dotenv(dotenv_path=".env")
+senha = os.getenv("API_KEY")
+genai.configure(api_key=senha)
 
 model = genai.GenerativeModel("gemini-1.5-flash")
 
