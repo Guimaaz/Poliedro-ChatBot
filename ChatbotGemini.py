@@ -62,7 +62,26 @@ def iniciar_chat():
                     continue
 
                 pedido = input("Qual o seu pedido? ")
-                PedidosArmazenados(numero_cliente, pedido)
+                itemSugerido = VerificarItensCardapio(pedido)
+                if itemSugerido :
+                     confirmacao = input(f"Você quis dizer '{itemSugerido}'? (sim/não):").strip().lower()
+                     if confirmacao == "sim" :
+                         PedidosArmazenados(numero_cliente,itemSugerido)
+                        
+                     else : 
+                         print(" Entendido, por favor, digite novamente o nome do prato.")
+                else :
+                    print("Desculpa, não trabalhamos com esse item. Por Farovr, peça algo presente em nosso cardádpio.")
+                    
+
+                   
+
+
+
+              
+
+               
+
                 
                 
             elif intencao == "CONSULTAR_PEDIDO":

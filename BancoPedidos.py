@@ -1,5 +1,8 @@
 import sqlite3
-import re
+import re # comparação de palavras de intençao
+import difflib # percentual de similaridade com o pedido no cardapio
+
+from prompts import *
 
 # Criação do banco de dados
 def CreateDatabase():
@@ -53,6 +56,12 @@ def BuscarPedidos(numero_cliente):
     return "\n".join([f"Pedido: {p[0]} - Data: {p[1]}" for p in pedidos])
 
 
+def VerificarItensCardapio(pedido):
+    pedido = pedido.lower()
+    prato_sugerido = difflib.get_close_matches(pedido, itensCardapio, n=1, cutoff=0.6)  #cutoff define o percentual de similaridade
+    if prato_sugerido:
+        return prato_sugerido[0]  # prato mais proximo em uma lista criada de pratos parecidos com o pedido
+    return None  
 
 
 

@@ -101,6 +101,41 @@ Cardápio do Restaurante
 
 """
 
+itensCardapio = [
+    "filé de salmão grelhado",
+    "bacalhau à brás",
+    "tilápia empanada",
+    
+    "frango à parmegiana",
+    "peito de frango grelhado",
+    "strogonoff de frango",
+    
+    "picanha na chapa",
+    "filé mignon ao molho madeira",
+    "costela assada",
+    
+    "lasanha bolonhesa",
+    "fettuccine alfredo",
+    "nhoque ao sugo",
+    
+    "risoto de cogumelos",
+    "hambúrguer de grão-de-bico",
+    "espaguete de abobrinha",
+    
+    "batata frita",
+    "isca de peixe",
+    "bolinho de aipim",
+    
+    "pudim de leite",
+    "torta de limão",
+    "brownie com sorvete",
+    
+    "caesar",
+    "salada tropical",
+    "salada caprese"
+]
+
+
 prompt_do_preco = """
 
 
@@ -148,7 +183,7 @@ prompt_do_preco = """
 
 prompt_intencao = """
 Sua tarefa é identificar a intenção da mensagem do cliente. Existem duas intenções principais:
-1. FAZER_PEDIDO: Quando o cliente deseja fazer um pedido de comida, 
+1. FAZER_PEDIDO: Quando o cliente deseja fazer um pedido de comida,
 2. CONSULTAR_PEDIDO: Quando o cliente deseja verificar um pedido já feito.
 Se a intenção do cliente não for nenhuma dessas, responda com normalmente.
 """
