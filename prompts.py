@@ -9,7 +9,6 @@ Você é um assistente virtual do restaurante do Poliedro, seu nome é popoli, e
 
 - Cardápio (opções de pratos, bebidas e sobremesas)
 - Realização de pedidos
-- Informar sobre entregas (disponibilidade, áreas atendidas e prazos)
 - Horários de funcionamento
 
 Se o cliente fizer perguntas fora desses temas, responda de forma educada e leve com algo como:
@@ -24,6 +23,10 @@ Exemplo de comportamento esperado:
 - Se o cliente solicitar o cardápio completo, apresente todas as opções de forma organizada.
 - Se o cliente perguntar sobre pedidos, pergunte se ele deseja fazer um pedido para entrega ou retirada.
 - Após a saudação inicial, responda diretamente ao que o cliente perguntar, sem repetir frases como "Olá, sou um atendente do Poliedro" a cada interação, e evite ser repetitivo, sem utilizar as mesmas expressões, somente cumprimente o usuário no inicio da interação, caso contrario não.
+
+Sempre analise a mensagem do usuário baseada no histórico anterior, veja se o que você como bot, irá responder algo coerente de acordo com o contexto
+
+não repita o que o cliente disse, apenas respoda o que ele lhe envia
 
 """
 
@@ -95,7 +98,7 @@ Cardápio do Restaurante
 - Brownie com Sorvete - Brownie de chocolate servido com sorvete de creme
 
  Saladas
-- Caesar - Alface, croutons, parmesão e molho caesar
+- Salada Caesar - Alface, croutons, parmesão e molho caesar
 - Salada Tropical - Mix de folhas, frutas da época e molho de iogurte
 - Salada Caprese - Tomate, muçarela de búfala, manjericão e azeite
 
@@ -130,7 +133,7 @@ itensCardapio = [
     "torta de limão",
     "brownie com sorvete",
     
-    "caesar",
+    "Salada Caesar",
     "salada tropical",
     "salada caprese"
 ]

@@ -57,21 +57,26 @@ def iniciar_chat():
             if intencao == "FAZER_PEDIDO":
                 print("Popoli: Certo! Vamos fazer seu pedido. Por favor, informe seu número de telefone.")
                 numero_cliente = input("Número (formato (XX) XXXXX-XXXX): ")
+        
                 if not validar_numero(numero_cliente):
-                    print("Número inválido! Solicite para fazer um pedido novamente e coloque o numero correto")
+                    print("Popoli : Número inválido! Solicite para fazer um pedido novamente e coloque o número correto.")
                     continue
 
-                pedido = input("Qual o seu pedido? ")
-                itemSugerido = VerificarItensCardapio(pedido)
-                if itemSugerido :
-                     confirmacao = input(f"Você quis dizer '{itemSugerido}'? (sim/não):").strip().lower()
-                     if confirmacao == "sim" :
-                         PedidosArmazenados(numero_cliente,itemSugerido)
-                        
-                     else : 
-                         print(" Entendido, por favor, digite novamente o nome do prato.")
-                else :
-                    print("Desculpa, não trabalhamos com esse item. Por Farovr, peça algo presente em nosso cardádpio.")
+                pedido = input("Popoli : Qual o seu pedido? ")
+                itemSugerido, exato = VerificarItensCardapio(pedido)
+
+                if itemSugerido:
+                    if exato:
+                        PedidosArmazenados(numero_cliente, itemSugerido)
+                    else:
+                        confirmacao = input(f"Popoli : Você quis dizer '{itemSugerido}'? (sim/não): ").strip().lower()
+                        if confirmacao == "sim":
+                            PedidosArmazenados(numero_cliente, itemSugerido)
+                        else:
+                            print("Popoli : Entendido. Pedido cancelado. Por favor, solicite novamente com o nome correto do prato.")
+                else:
+                    print("Popoli : Desculpa, não trabalhamos com esse item. Por favor, peça algo presente em nosso cardápio.")
+
                     
 
                    

@@ -58,13 +58,14 @@ def BuscarPedidos(numero_cliente):
 
 def VerificarItensCardapio(pedido):
     pedido = pedido.lower()
-    prato_sugerido = difflib.get_close_matches(pedido, itensCardapio, n=1, cutoff=0.6)  #cutoff define o percentual de similaridade
+    if pedido in itensCardapio:
+        return pedido, True  
+
+    prato_sugerido = difflib.get_close_matches(pedido, itensCardapio, n=1, cutoff=0.6)
     if prato_sugerido:
-        return prato_sugerido[0]  # prato mais proximo em uma lista criada de pratos parecidos com o pedido
-    return None  
+        return prato_sugerido[0], False  
 
-
-
+    return None, False  
 
 
 
