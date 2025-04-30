@@ -1,7 +1,7 @@
 import sqlite3
 import re # comparação de palavras de intençao
 import difflib # percentual de similaridade com o pedido no cardapio
-from prompts import *
+from server.prompts import *
 
 # Criação do banco de dados
 def CreateDatabase():

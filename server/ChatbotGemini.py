@@ -1,12 +1,12 @@
 import google.generativeai as genai
-from prompts import * 
-from BancoPedidos import *
+from server.prompts import * 
+from server.BancoPedidos import *
 import re
 import os
 from dotenv import load_dotenv
 
 #funções q "escondem a api" e puxam ela pelo .env usando o import os e o dotent load_dontenv
-load_dotenv(dotenv_path=".env")
+load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '.env'))
 senha = os.getenv("API_KEY")
 genai.configure(api_key=senha)
 

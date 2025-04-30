@@ -1,4 +1,4 @@
-from BancoPedidos import *
+from server.BancoPedidos import *
 
 
 prompt_restaurante = """
