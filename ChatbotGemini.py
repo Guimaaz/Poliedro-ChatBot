@@ -62,7 +62,7 @@ def iniciar_chat():
                     print("Popoli : Número inválido! Solicite para fazer um pedido novamente e coloque o número correto.")
                     continue
 
-                pedido = input("Popoli : Qual o seu pedido? ")
+                pedido = input("Qual o seu pedido? ")
                 itemSugerido, exato = VerificarItensCardapio(pedido)
 
                 if itemSugerido:
