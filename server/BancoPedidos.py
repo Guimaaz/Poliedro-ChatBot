@@ -44,12 +44,12 @@ def CreateDatabase():
     conexao.close()
 
 
-# Validação do número de telefone
+
 def validar_numero(numero_cliente):
     padrao = r"\(\d{2}\) \d{5}-\d{4}"
     return re.match(padrao, numero_cliente)
 
-# Função para armazenar pedido no banco de dados
+
 def PedidosArmazenados(numero_cliente, pedido):
     if not validar_numero(numero_cliente):
         print("Número inválido! Use o formato (XX) XXXXX-XXXX.")
@@ -71,9 +71,8 @@ def PedidosArmazenados(numero_cliente, pedido):
     cursor.execute("SELECT id, pedido, preco FROM cardapios WHERE pedido = ?", (pedido,))
     item = cursor.fetchone()
 
-    # Caso o pedido não exista, vamos inseri-lo
+   
     if not item:
-        # Inserir pedido com preço no cardápio
         for p, preco in itensCardapio:
             if p == pedido:
                 cursor.execute("INSERT INTO cardapios (pedido, preco) VALUES (?, ?)", (pedido, preco))
@@ -82,7 +81,7 @@ def PedidosArmazenados(numero_cliente, pedido):
                 item = cursor.fetchone()
                 break
 
-    # Inserir o pedido na tabela de pedidos
+   
     cursor.execute("INSERT INTO pedidos (numero_cliente, item, item_id, preco) VALUES (?, ?, ?, ?)", 
                    (numero_cliente, item[1], item[0], item[2]))
 
@@ -90,7 +89,7 @@ def PedidosArmazenados(numero_cliente, pedido):
     conexao.close()
     print("Pedido registrado com sucesso!")
 
-# Função para buscar pedidos no banco de dados
+
 def BuscarPedidos(numero_cliente):
     conexao = sqlite3.connect("chatbot.db")
     cursor = conexao.cursor()
