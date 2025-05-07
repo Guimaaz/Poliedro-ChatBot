@@ -105,82 +105,82 @@ Cardápio do Restaurante
 """
 
 itensCardapio = [
-    "filé de salmão grelhado",
-    "bacalhau à brás",
-    "tilápia empanada",
+    ("filé de salmão grelhado", 35.90),
+    ("bacalhau à brás", 42.50),
+    ("tilápia empanada", 28.90),
     
-    "frango à parmegiana",
-    "peito de frango grelhado",
-    "strogonoff de frango",
+    ("frango à parmegiana", 24.90), 
+    ("peito de frango grelhado", 22.50),
+    ("strogonoff de frango", 26.00),
     
-    "picanha na chapa",
-    "filé mignon ao molho madeira",
-    "costela assada",
+    ("picanha na chapa", 58.90),
+    ("filé mignon ao molho madeira", 55.00),
+    ("costela assada", 49.90),
     
-    "lasanha bolonhesa",
-    "fettuccine alfredo",
-    "nhoque ao sugo",
+    ("lasanha bolonhesa", 32.90),
+    ("fettuccine alfredo", 30.50),
+    ("nhoque ao sugo", 27.00),
     
-    "risoto de cogumelos",
-    "hambúrguer de grão-de-bico",
-    "espaguete de abobrinha",
+    ("risoto de cogumelos", 34.00),
+    ("hambúrguer de grão-de-bico", 18.90),
+    ("espaguete de abobrinha", 20.90),
     
-    "batata frita",
-    "isca de peixe",
-    "bolinho de aipim",
+    ("batata frita", 10.90),
+    ("isca de peixe", 15.50),
+    ("bolinho de aipim", 12.50),
     
-    "pudim de leite",
-    "torta de limão",
-    "brownie com sorvete",
+    ("pudim de leite", 8.90),
+    ("torta de limão", 10.00),
+    ("brownie com sorvete", 15.90),
     
-    "Salada Caesar",
-    "salada tropical",
-    "salada caprese"
+    ("Salada Caesar", 14.90),
+    ("salada tropical", 18.00),
+    ("salada caprese", 19.00)
 ]
+
 
 
 prompt_do_preco = """
 
 
  Peixes
-- Filé de Salmão Grelhado - Acompanha arroz e legumes salteados - 150,00
-- Bacalhau à Brás - Bacalhau desfiado com batata palha e ovos 280,00
-- Tilápia Empanada - Servida com purê de batata e salada verde 140,00
+- Filé de Salmão Grelhado - Acompanha arroz e legumes salteados - 35.90
+- Bacalhau à Brás - Bacalhau desfiado com batata palha e ovos 42.50
+- Tilápia Empanada - Servida com purê de batata e salada verde 28.90
 
  Frango
-- Frango à Parmegiana - Frango empanado com molho de tomate e queijo, acompanhado de arroz e batata frita 89,99
-- Peito de Frango Grelhado - Acompanha arroz integral e salada mista 105,00
-- Strogonoff de Frango - Servido com arroz branco e batata palha 98,00
+- Frango à Parmegiana - Frango empanado com molho de tomate e queijo, acompanhado de arroz e batata frita 24.90
+- Peito de Frango Grelhado - Acompanha arroz integral e salada mista 22.50
+- Strogonoff de Frango - Servido com arroz branco e batata palha 26.00
 
  Carnes
-- Picanha na Chapa - Acompanha arroz, feijão tropeiro e vinagrete 280,00
-- Filé Mignon ao Molho Madeira - Servido com arroz e batata gratinada 189,99
-- Costela Assada - Acompanha mandioca cozida e salada 160,00
-
+- Picanha na Chapa - Acompanha arroz, feijão tropeiro e vinagrete 58.90
+- Filé Mignon ao Molho Madeira - Servido com arroz e batata gratinada 55.00
+- Costela Assada - Acompanha mandioca cozida e salada 49.90
  Massas
-- Lasanha Bolonhesa - Camadas de massa, molho de carne e queijo 75,00
-- Fettuccine Alfredo - Massa com molho cremoso de queijo parmesão 49,00
-- Nhoque ao Sugo - Massa de batata com molho de tomate fresco 77,00
+- Lasanha Bolonhesa - Camadas de massa, molho de carne e queijo 32.90
+- Fettuccine Alfredo - Massa com molho cremoso de queijo parmesão 30.50
+- Nhoque ao Sugo - Massa de batata com molho de tomate fresco 27.00
 
  Vegano
-- Risoto de Cogumelos - Arroz cremoso com mix de cogumelos 49,80
-- Hambúrguer de Grão-de-Bico - Servido com batatas rústicas 35,00
-- Espaguete de Abobrinha - Com molho ao sugo e manjericão 60,00
+- Risoto de Cogumelos - Arroz cremoso com mix de cogumelos 34.00
+- Hambúrguer de Grão-de-Bico - Servido com batatas rústicas 18.90
+- Espaguete de Abobrinha - Com molho ao sugo e manjericão  20.90
 
  Porções
-- Batata Frita - Porção generosa de batata frita crocante 80,00
-- Isca de Peixe - Peixe empanado com molho tártaro 150,00
-- Bolinho de Aipim - Recheado com carne seca 35,00
+- Batata Frita - Porção generosa de batata frita crocante 10.90
+- Isca de Peixe - Peixe empanado com molho tártaro 15.50
+- Bolinho de Aipim - Recheado com carne seca 12.50
 
  Sobremesas
-- Pudim de Leite - Tradicional e cremoso 38,00
-- Torta de Limão - Massa crocante com recheio azedinho 14,00
-- Brownie com Sorvete - Brownie de chocolate servido com sorvete de creme 38,00
+- Pudim de Leite - Tradicional e cremoso  8.90
+- Torta de Limão - Massa crocante com recheio azedinho 10.00
+- Brownie com Sorvete - Brownie de chocolate servido com sorvete de creme 15.90
 
  Saladas
-- Caesar - Alface, croutons, parmesão e molho caesar 78,00
-- Salada Tropical - Mix de folhas, frutas da época e molho de iogurte 49,00
-- Salada Caprese - Tomate, muçarela de búfala, manjericão e azeite 64,00
+- Caesar - Alface, croutons, parmesão e molho caesar 14.90
+- Salada Tropical - Mix de folhas, frutas da época e molho de iogurte 18.00
+- Salada Caprese - Tomate, muçarela de búfala, manjericão e azeite 19.00
 
 """
 
