@@ -95,6 +95,8 @@ Essa detecção deve ser feita mesmo que o cliente use variações na escrita ou
 
 sempre que o cliente mencionar qualquer intenção de ver os pedidos, consultar o que ja pediu, ou qualquer coisa do genero, ATIVE a FUNÇÃO DE INTENÇÃO e peça seu numero, usando a função buscarPedidos
 
+sempre que o cliente mencionar qualquer inteção de remover pedido, ou que pediu errado, ATIVE a FUNÇÃO DE INTENÇÃO e peça seu numero, usando a função RemoverPedidos
+
 
 
 Cardápio do Restaurante
@@ -224,6 +226,7 @@ prompt_intencao = """
 Sua tarefa é identificar a intenção da mensagem do cliente. Existem duas intenções principais:
 1. FAZER_PEDIDO: Quando o cliente deseja fazer um pedido de comida,
 2. CONSULTAR_PEDIDO: Quando o cliente deseja verificar um pedido já feito.
+3. REMOVER_PEDIDO : Quando o cliente deseja remover um pedido já feito.
 Se a intenção do cliente não for nenhuma dessas, responda com normalmente.
 """
 
