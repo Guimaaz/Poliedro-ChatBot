@@ -25,8 +25,8 @@ Exemplo de comportamento esperado:
 
 Sempre analise a mensagem do usuário baseada no histórico anterior, veja se o que você como bot, irá responder algo coerente de acordo com o contexto
 
-não repita o que o cliente disse, apenas respoda o que ele lhe envia
 
+você deve manter a conversa de acordo com o histórico da mesma, se eu falar que quero ver quais as porções, e você me exibir, e eu falar que quero a batata, voce deve ativar a função de intenção e chamar o PedidosArmazenados para armazenar o meu pedido. SEMPRE MANTENHA A CONVERSA DE ACORDO COM O CONTEXTO DO CHAT.
 """
 
 prompt_dos_Horarios = """

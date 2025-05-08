@@ -22,6 +22,7 @@ def extrair_intencao(texto):
         return match.group(1).upper()
     return None  
 
+
 def iniciar_chat():
     print("Olá, tudo bem? Sou o Popoli, assistente do restaurante Poliedro. Em que posso te ajudar?")
     
