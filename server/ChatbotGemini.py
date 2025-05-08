@@ -15,9 +15,9 @@ model = genai.GenerativeModel("gemini-1.5-flash")
 def extrair_intencao(texto):
     """
     Extrai a intenção do modelo a partir do texto gerado.
-    Ele deve conter INTENÇÃO: FAZER_PEDIDO ou INTENÇÃO: CONSULTAR_PEDIDO.
+    Ele deve conter INTENÇÃO: FAZER_PEDIDO ou INTENÇÃO: CONSULTAR_PEDIDO ou INTENÇÃO: REMOVER_PEDIDO.
     """
-    match = re.search(r'INTENÇÃO:\s*(FAZER_PEDIDO|CONSULTAR_PEDIDO)', texto, re.IGNORECASE)
+    match = re.search(r'INTENÇÃO:\s*(FAZER_PEDIDO|CONSULTAR_PEDIDO|REMOVER_PEDIDO)', texto, re.IGNORECASE)
     if match:
         return match.group(1).upper()
     return None  
@@ -43,6 +43,7 @@ def iniciar_chat():
             "\n\nBaseado na conversa acima, identifique a intenção do usuário.\n"
             "Se o usuário deseja fazer um pedido, responda com: **INTENÇÃO: FAZER_PEDIDO**\n"
             "Se o usuário deseja consultar um pedido, responda com: **INTENÇÃO: CONSULTAR_PEDIDO**\n"
+            "Se o usuário deseja remover um pedido, responda com: **INTENÇÃO: REMOVER_PEDIDO**\n"
             "Caso contrário, responda normalmente de forma amigável e interativa, sem mencionar a intenção."
         )
 
@@ -77,18 +78,7 @@ def iniciar_chat():
                 else:
                     print("Popoli : Desculpa, não trabalhamos com esse item. Por favor, peça algo presente em nosso cardápio.")
 
-                    
-
-                   
-
-
-
-              
-
-               
-
-                
-                
+  
             elif intencao == "CONSULTAR_PEDIDO":
                 print("Popoli: Claro! Para consultar seu pedido, preciso do seu número de telefone.")
                 numero_cliente = input("Número (formato (XX) XXXXX-XXXX): ")
@@ -98,6 +88,37 @@ def iniciar_chat():
 
                 resultado = BuscarPedidos(numero_cliente)
                 print(resultado)
+
+            elif intencao == "REMOVER_PEDIDO":
+                print("Popoli: Claro! Para remover seu pedido, preciso do seu número de telefone.")
+                numero_cliente = input("Número (Formato (XX) XXXXX-XXXX): ")
+    
+                if not validar_numero(numero_cliente):
+                    print("Número inválido! Solicite para remover o(os) pedidos novamente e coloque o número correto")
+                    continue
+
+                pedidos_atuais = BuscarPedidos(numero_cliente)
+                if "nenhum pedido" in pedidos_atuais.lower():
+                    print("Popoli: Não encontramos pedidos ativos para esse número.")
+                    continue
+
+                print("Popoli: Aqui estão seus pedidos atuais:")
+                print(pedidos_atuais)
+
+                pedido = input("Qual pedido você gostaria de remover? ").strip().lower()
+
+   
+                linhas = pedidos_atuais.split("\n")
+                pedidos_listados = [linha.split(" (ID")[0].split(": ")[1].strip().lower() for linha in linhas]
+
+                if pedido not in pedidos_listados:
+                    print("Popoli: Esse pedido não foi encontrado entre os seus pedidos. Verifique o nome e tente novamente.")
+                    continue
+
+                resultado = removerPedidos(numero_cliente, pedido)
+                
+
+
         else:
            
             print(f"Popoli: {bot_reply}")
