@@ -93,6 +93,8 @@ Sempre que o cliente mencionar diretamente qualquer prato do cardápio, com fras
 
 Essa detecção deve ser feita mesmo que o cliente use variações na escrita ou menções parciais ao nome do prato.
 
+sempre que o cliente mencionar qualquer intenção de ver os pedidos, consultar o que ja pediu, ou qualquer coisa do genero, ATIVE a FUNÇÃO DE INTENÇÃO e peça seu numero, usando a função buscarPedidos
+
 
 
 Cardápio do Restaurante
