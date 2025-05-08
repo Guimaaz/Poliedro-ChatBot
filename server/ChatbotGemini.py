@@ -37,15 +37,7 @@ def iniciar_chat():
         chat_history.append({"role": "user", "parts": [user_input]})
 
        
-        prompt_completo = (
-            prompt_restaurante + prompt_dos_Horarios + prompt_do_Cardapio + 
-            prompt_do_preco + prompt_intencao +
-            "\n\nBaseado na conversa acima, identifique a intenção do usuário.\n"
-            "Se o usuário deseja fazer um pedido, responda com: **INTENÇÃO: FAZER_PEDIDO**\n"
-            "Se o usuário deseja consultar um pedido, responda com: **INTENÇÃO: CONSULTAR_PEDIDO**\n"
-            "Se o usuário deseja remover um pedido, responda com: **INTENÇÃO: REMOVER_PEDIDO**\n"
-            "Caso contrário, responda normalmente de forma amigável e interativa, sem mencionar a intenção."
-        )
+        
 
         response = model.generate_content([
             {"role": "user", "parts": [prompt_completo + user_input]}
