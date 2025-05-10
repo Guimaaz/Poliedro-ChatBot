@@ -1,124 +1,127 @@
-import React, {useState} from "react"; // importa o react e o use state, que é um hook usado para armazenar o estado da interface ( por exemplo o texto digitado, e as mensagens anteriores )
-
-import { View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet } from 'react-native';
-
-// importa os componentes principais do react native, view que serve como uma div para agrupar elementos, o text que obviamente mostra os textos, o textInput que abre um campo de input, o touchableopacity que gera um botão clicavél, o flatlist que é uma lista com rolagem, e o stylesheet que é onde os estilos css é definido
+import React, { useState } from 'react';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, SafeAreaView, useWindowDimensions } from 'react-native';
+// safeareaview garente que os itens dos celulares nao sobreponham a interface, por exemplo o dentinho do iphone
 
 
-type Message = {
-  id: string;
-  text: string;
-};
-
-// tipagem do tipo de mensagem que irá ser recebido ou enviado pelo front, garantindo que o id da mensagem é único para cada mensagem, sendo ele um número que é armazenado, e a mensagem (text) é do tipo string, literal
-
-
-
-export default function ChatScreen() {
-
-  //função principal do componente que irá gerar a tela do chat em si, e é o que será exportado e usado na navegação como uma página
-  const [messages, setMessages] = useState<Message[]>([]);
-  // cria o estado Message, que teve sua tipagem criada anteriormente, que será um array de mensagens, o useState é usado para armazenar valores, e os atualizar durante o uso do aplicativo
-
-  // nesse caso o useState que é do tipo Message, retorna um array com dois itens, o valor atual, que seria messages, e o valor atualizado que será o setMessages, que é a string que o usuário irá digitar (**AQUI ELE PE RESPONSAVEL PELAS MENSAGENS EXISTENTES (Historico) **)
-  const [inputText, setInputText] = useState('');
-  // aqui o useState inicia com um valor nulo ' ', sendo ele o inputText, mas enquanto o usuário digita, ele é atualizado pelo setInputText (**AQUI É O ARMAZENAMENTO NO CAMPO DE INPUT**)
-
-
-
-
-
-
-  const handleSend = () => {
-    // criamos a const handlesend e usamos => como atribuição, que é conhecida como atribuição arrow em react
-    if (inputText.trim()) {
-      //inputText é o que o usuário digitar, definido no const acima, o .trim é responsável por tirar os espaçamentos em branco no inicio e no fim da string
-      // o if esta verificando se o usuário digitou algo, ou seja, não deixou o campo de input em branco
-
-      setMessages([...messages, { id: Date.now().toString(), text: inputText }]);
-      // setMessages é a parte atualizada do histórico de mensagens que definimos na const dentro da função ChatScreen, ao chamar ela, o react redesenha a tela com as novas mensagens, mantendo o histórico
-      // ao passar de parametro para SetMessages, os parametros ...messages ( isso significa que estamos pegando todas, todas as mensagens anteriores, o id e o text criam uma nova mensagem) o date.now retorna a hora exata em milissegundos, e o toString converte para string, assim sendo, toda mensagem tem id unico, pois nenhuma mensagem é enviada no mesmo milissegundo
-      // ou seja, esse campo estamos fazendo que seja o seguinte, o setMessages vai pegar todas as mensagens anteriores, e vai adicionar essa nova que estamos colocando no input na frente de todas, salvando em forma de lista de palavras
-
-      setInputText('');
-      // isso limpa o campo do usuário após ele ter enviado alguma mensagem 
-    }
+export default function App() {
+  const [telefone, setTelefone] = useState('');
+  const [senha, setSenha] = useState('');
+  
+  const { width } = useWindowDimensions(); // atualiza o tamanho da tela em tempo real ( ou seja, dependendo do tamanho da tela do celular, estando deitado ou nao, ele pega em tempo real e utiliza no const abaixo)
+  const inputWidth = width < 600 ? width * 0.7 : 700;
+  const containerWidth = width < 600 ? width * 0.9 : 1000; // o mesmo, mas para o container
+  const handleLogin = () => {
+    //teste de quando é funcional o alert
+    alert('Login clicado!');
   };
 
   return (
-    //irá retornar o que vai ser exibido na tela
-    <View style={styles.container}>
-      <FlatList
-        data={messages}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <View style={styles.messageBubble}>
-            <Text style={styles.messageText}>{item.text}</Text>
-          </View>
-        )}
-        contentContainerStyle={styles.chatContainer}
-      />
+    <SafeAreaView style={styles.safeArea}>
+      <View style={[styles.container, {width : containerWidth }]}>
+        <View style={styles.topContainer}>
+          <Image
+             source={require('../../assets/images/logopoliedro.png')}
+            style={styles.logo}
+            resizeMode="contain"
+          />
+        </View>
 
-      <View style={styles.inputContainer}>
-        <TextInput
-          style={styles.input}
-          placeholder="Digite sua mensagem..."
-          value={inputText}
-          onChangeText={setInputText}
-        />
-        <TouchableOpacity onPress={handleSend} style={styles.sendButton}>
-          <Text style={styles.sendButtonText}>Enviar</Text>
-        </TouchableOpacity>
+        <View style={styles.loginContainer}>
+          <Text style={styles.title}>Login</Text>
+
+          <TextInput
+            style={[styles.input, { width: inputWidth }]}
+            placeholder="Número de telefone"
+            keyboardType="phone-pad"
+            value={telefone}
+            onChangeText={setTelefone}
+          />
+
+          <TextInput
+            style={[styles.input, { width: inputWidth }]}
+            placeholder="Senha"
+            secureTextEntry
+            value={senha}
+            onChangeText={setSenha}
+          />
+
+          <TouchableOpacity style={styles.button} onPress={handleLogin}>
+            <Text style={styles.buttonText}>Entrar</Text>
+          </TouchableOpacity>
+        </View>
+
+        
+        <View style={styles.bottomRounded} />
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#4B3D3D',  // atras do container o vinho
+  },
   container: {
     flex: 1,
-    backgroundColor: '#bfb493',
-  },
-  chatContainer: {
-    padding: 20,
+    backgroundColor: '#e0e0e0', // fundo principal
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+    margin: 20,
+    overflow: 'hidden',
+    alignSelf: 'center'
     
   },
-  messageBubble: {
-    backgroundColor: 'white',
-    padding: 10,
-    borderRadius: 10,
-    marginVertical: 5,
-    alignSelf: 'flex-start', 
-  },
-  messageText: {
-    fontSize: 16,
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    padding: 20,
-    borderTopWidth: 1,
-    borderColor: '#ccc',
+  topContainer: {
     backgroundColor: '#fff',
+    paddingTop: 20,
     alignItems: 'center',
+    borderBottomWidth: 1,
+    borderColor: '#ccc',
+    paddingBottom: 10,
+  },
+  logo: {
+    width: 120,
+    height: 50,
+  },
+  loginContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+  },
+  title: {
+    fontSize: 28,
+    marginBottom: 40,
+    color: '#000',
+    fontFamily : "Cal Sans"
+
   },
   input: {
-    flex: 1,
     height: 50,
-    paddingHorizontal: 10,
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 20,
-    marginRight: 10,
-  },
-  sendButton: {
-    backgroundColor: '#465575',
-    paddingVertical: 10,
+    backgroundColor: '#fff',
+    borderRadius: 25,
     paddingHorizontal: 20,
-    borderRadius: 20,
+    fontSize: 16,
+    marginBottom: 20,
   },
-  sendButtonText: {
+  button: {
+    width: 150,
+    backgroundColor: '#5C75A7',
+    paddingVertical: 12,
+    borderRadius: 25,
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  buttonText: {
     color: '#fff',
-    fontWeight: 'bold',
+    fontSize: 18,
+  },
+  bottomRounded: {
+    height: 50,
+    backgroundColor: '#5C75A7',
+    
   },
 });
-
