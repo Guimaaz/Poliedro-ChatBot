@@ -26,6 +26,7 @@ export default function App() {
           />
         </View>
 
+
         <View style={styles.loginContainer}>
           <Text style={styles.title}>Login</Text>
 
