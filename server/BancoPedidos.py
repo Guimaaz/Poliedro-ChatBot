@@ -92,23 +92,31 @@ def PedidosArmazenados(numero_cliente, pedido):
 
 
 def removerPedidos(numero_cliente, pedido):
-    if not validar_numero(numero_cliente):
-        print("Número inválido! Use o formato (XX) XXXXX-XXXX.")
-        return
-
-    conexao = sqlite3.connect("chatbot.db")
-    cursor = conexao.cursor()
-
-    cursor.execute(
-        "DELETE FROM pedidos WHERE numero_cliente = ? AND item = ?",
-        (numero_cliente, pedido)
-    )
-
-    conexao.commit()
-    conexao.close()
-    print("Pedido removido com sucesso!")
-
-      
+    try:
+        conn = sqlite3.connect('pedidos.db')
+        cursor = conn.cursor()
+        
+        # Primeiro verifica se o pedido existe
+        cursor.execute("SELECT * FROM pedidos WHERE numero_cliente = ? AND pedido = ?", 
+                      (numero_cliente, pedido))
+        if not cursor.fetchone():
+            return "Pedido não encontrado"
+        
+        # Remove o pedido
+        cursor.execute("DELETE FROM pedidos WHERE numero_cliente = ? AND pedido = ?", 
+                      (numero_cliente, pedido))
+        conn.commit()
+        
+        if cursor.rowcount > 0:
+            return "Removido com sucesso"
+        else:
+            return "Não foi possível remover o pedido"
+    
+    except sqlite3.Error as e:
+        return f"Erro no banco de dados: {str(e)}"
+    finally:
+        if conn:
+            conn.close()
 
 
 
