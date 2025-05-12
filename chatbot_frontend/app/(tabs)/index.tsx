@@ -15,6 +15,7 @@ export default function App() {
     alert('Login clicado!');
   };
 
+  
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={[styles.container, {width : containerWidth }]}>
