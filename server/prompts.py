@@ -230,3 +230,12 @@ Sua tarefa é identificar a intenção da mensagem do cliente. Existem duas inte
 Se a intenção do cliente não for nenhuma dessas, responda com normalmente.
 """
 
+prompt_completo = (
+            prompt_restaurante + prompt_dos_Horarios + prompt_do_Cardapio + 
+            prompt_do_preco + prompt_intencao +
+            "\n\nBaseado na conversa acima, identifique a intenção do usuário.\n"
+            "Se o usuário deseja fazer um pedido, responda com: **INTENÇÃO: FAZER_PEDIDO**\n"
+            "Se o usuário deseja consultar um pedido, responda com: **INTENÇÃO: CONSULTAR_PEDIDO**\n"
+            "Se o usuário deseja remover um pedido, responda com: **INTENÇÃO: REMOVER_PEDIDO**\n"
+            "Caso contrário, responda normalmente de forma amigável e interativa, sem mencionar a intenção."
+        )
