@@ -28,16 +28,16 @@ export default function ChatScreen() {
   const [inputPlaceholder, setInputPlaceholder] = useState('Digite sua mensagem...');
   const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    // Testar conexão ao iniciar
-    const init = async () => {
-      const { success, error } = await testConnection();
-      if (!success) {
-        addBotMessage(`⚠️ Problema de conexão: ${error}\nVerifique seu servidor.`);
-      }
-    };
-    init();
-  }, []);
+  // useEffect(() => {
+  //   // Testar conexão ao iniciar
+  //   const init = async () => {
+  //     const { success, error } = await testConnection();
+  //     if (!success) {
+  //       addBotMessage(`⚠️ Problema de conexão: ${error}\nVerifique seu servidor.`);
+  //     }
+  //   };
+  //   init();
+  // }, []);
 
   const addBotMessage = (text: string) => {
     const newMessage: Message = {
