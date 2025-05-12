@@ -1,8 +1,9 @@
 import React, {useState} from "react"; // importa o react e o use state, que é um hook usado para armazenar o estado da interface ( por exemplo o texto digitado, e as mensagens anteriores )
 
-import { View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet, SafeAreaView, useWindowDimensions } from 'react-native';
 
 // importa os componentes principais do react native, view que serve como uma div para agrupar elementos, o text que obviamente mostra os textos, o textInput que abre um campo de input, o touchableopacity que gera um botão clicavél, o flatlist que é uma lista com rolagem, e o stylesheet que é onde os estilos css é definido
+
 
 
 type Message = {
@@ -15,6 +16,9 @@ type Message = {
 
 
 export default function ChatScreen() {
+
+  const {width} = useWindowDimensions();
+  const containerWidth = width < 600? width * 0.9 : 1000;
 
   //função principal do componente que irá gerar a tela do chat em si, e é o que será exportado e usado na navegação como uma página
   const [messages, setMessages] = useState<Message[]>([]);
@@ -47,7 +51,8 @@ export default function ChatScreen() {
 
   return (
     //irá retornar o que vai ser exibido na tela
-    <View style={styles.container}>
+    <SafeAreaView style={styles.safeArea}>
+    <View style={[styles.container, { width : containerWidth}]}>
       <FlatList
         data={messages}
         keyExtractor={(item) => item.id}
@@ -71,16 +76,30 @@ export default function ChatScreen() {
         </TouchableOpacity>
       </View>
     </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#4B3D3D',  // atras do container o vinho
+  },
   container: {
+
     flex: 1,
     backgroundColor: '#bfb493',
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+    margin : 20,
+    alignSelf : 'center',
+  
   },
   chatContainer: {
     padding: 20,
+    
     
   },
   messageBubble: {
@@ -89,9 +108,12 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     marginVertical: 5,
     alignSelf: 'flex-start', 
+    
   },
   messageText: {
     fontSize: 16,
+    padding : 10
+    
   },
   inputContainer: {
     flexDirection: 'row',
@@ -100,6 +122,8 @@ const styles = StyleSheet.create({
     borderColor: '#ccc',
     backgroundColor: '#fff',
     alignItems: 'center',
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
   },
   input: {
     flex: 1,
@@ -109,6 +133,8 @@ const styles = StyleSheet.create({
     borderColor: '#ccc',
     borderRadius: 20,
     marginRight: 10,
+     borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
   },
   sendButton: {
     backgroundColor: '#465575',
