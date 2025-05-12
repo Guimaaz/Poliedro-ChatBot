@@ -2,7 +2,7 @@ import sqlite3
 import re  # comparação de palavras de intenção
 import difflib  # percentual de similaridade com o pedido no cardápio
 from server.prompts import *
-
+from server.cardapio import itensCardapio
 
 def CreateDatabase():
     conexao = sqlite3.connect("chatbot.db")

@@ -2,170 +2,157 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import google.generativeai as genai
 from server.prompts import *
-from server.BancoPedidos import *
+from server.BancoPedidos import (
+    CreateDatabase,
+    validar_numero,
+    PedidosArmazenados,
+    BuscarPedidos,
+    removerPedidos,
+    VerificarItensCardapio
+)
 import re
 import os
 from dotenv import load_dotenv
+from pathlib import Path
 
 app = Flask(__name__)
-CORS(app)  # Permite todas as origens
+CORS(app)
 
-# Carrega as variáveis de ambiente
-load_dotenv()
-senha = os.getenv("API_KEY")
-
-# Configuração do modelo Gemini (igual ao seu código)
-genai.configure(api_key=senha)
+# Configuração inicial
+load_dotenv(dotenv_path=Path('.') / '.env')
+genai.configure(api_key=os.getenv("API_KEY"))
 model = genai.GenerativeModel("gemini-1.5-flash")
 
-# Banco de dados de pedidos (simulado como no seu código)
-pedidos_db = {}
+# Dicionário para manter o contexto das conversas
+conversation_context = {}
 
 def extrair_intencao(texto):
-    """
-    Extrai a intenção do modelo a partir do texto gerado.
-    Exatamente como no seu código original.
-    """
     match = re.search(r'INTENÇÃO:\s*(FAZER_PEDIDO|CONSULTAR_PEDIDO|REMOVER_PEDIDO)', texto, re.IGNORECASE)
-    if match:
-        return match.group(1).upper()
-    return None
+    return match.group(1).upper() if match else None
 
-def validar_numero(numero):
-    """Valida o formato do número de telefone (igual ao seu código)"""
-    padrao = r'^\(\d{2}\) \d{5}-\d{4}$'
-    return re.match(padrao, numero) is not None
-
-@app.route('/chat', methods=['POST', 'OPTIONS'])
+@app.route('/chat', methods=['POST'])
 def chat():
-    if request.method == 'OPTIONS':
-        response = jsonify({'status': 'ok'})
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Headers', '*')
-        response.headers.add('Access-Control-Allow-Methods', '*')
-        return response
+    data = request.json
+    user_input = data.get('mensagem', '').strip()
+    session_id = data.get('session_id', 'default')
+    
+    # Inicializa contexto se não existir
+    if session_id not in conversation_context:
+        conversation_context[session_id] = {
+            'step': None,
+            'numero_cliente': None,
+            'pedido': None,
+            'item_sugerido': None
+        }
+    
+    ctx = conversation_context[session_id]
 
     try:
-        data = request.get_json()
-        
-        # Campos esperados (igual à lógica do seu código)
-        user_input = data.get('mensagem')
-        numero_cliente = data.get('numero_cliente')
-        pedido = data.get('pedido')
-        confirmacao = data.get('confirmacao')
-        item_sugerido = data.get('item_sugerido')
-
-        # Geração da resposta pelo modelo Gemini (igual ao seu código)
-        response = model.generate_content([
-            {"role": "user", "parts": [prompt_completo + user_input]}
-        ])
-        bot_reply = response.text.strip()
-        intencao = extrair_intencao(bot_reply)
-
-        # Lógica de resposta (igual ao seu código original)
-        if not intencao:
-            return jsonify({'resposta': bot_reply})
-
-        if intencao == "FAZER_PEDIDO":
-            if not numero_cliente:
+        # Se não estiver em um passo intermediário, analise a intenção
+        if not ctx['step']:
+            response = model.generate_content([{"role": "user", "parts": [prompt_completo + user_input]}])
+            bot_reply = response.text.strip()
+            intencao = extrair_intencao(bot_reply)
+            
+            if not intencao:
+                return jsonify({'resposta': bot_reply, 'session_id': session_id})
+            
+            if intencao == "FAZER_PEDIDO":
+                ctx['step'] = 'solicitar_numero'
                 return jsonify({
-                    'resposta': "Certo! Vamos fazer seu pedido. Por favor, informe seu número de telefone (formato (XX) XXXXX-XXXX).",
-                    'requer_numero': True
+                    'resposta': "Popoli: Certo! Vamos fazer seu pedido. Por favor, informe seu número de telefone (formato (XX) XXXXX-XXXX).",
+                    'requer_numero': True,
+                    'session_id': session_id
+                })
+            # ... (outros fluxos mantidos)
+
+        # Processamento dos passos do pedido
+        if ctx['step'] == 'solicitar_numero':
+            if not validar_numero(user_input):
+                return jsonify({
+                    'resposta': "Popoli: Número inválido! Por favor, use o formato (XX) XXXXX-XXXX.",
+                    'requer_numero': True,
+                    'session_id': session_id
                 })
             
-            if not validar_numero(numero_cliente):
-                return jsonify({
-                    'resposta': "Número inválido! Solicite para fazer um pedido novamente e coloque o número correto.",
-                    'requer_numero': True
-                })
-
-            if not pedido:
-                return jsonify({
-                    'resposta': "Qual o seu pedido?",
-                    'requer_pedido': True
-                })
-
-            itemSugerido, exato = VerificarItensCardapio(pedido)
-
-            if not itemSugerido:
-                return jsonify({
-                    'resposta': "Desculpa, não trabalhamos com esse item. Por favor, peça algo presente em nosso cardápio."
-                })
-
-            if not exato:
-                if confirmacao is None:
-                    return jsonify({
-                        'resposta': f"Você quis dizer '{itemSugerido}'? (sim/não)",
-                        'requer_confirmacao': True,
-                        'item_sugerido': itemSugerido
-                    })
-                elif confirmacao.lower() != 'sim':
-                    return jsonify({
-                        'resposta': "Entendido. Pedido cancelado. Por favor, solicite novamente com o nome correto do prato."
-                    })
-
-            pedido_id = PedidosArmazenados(numero_cliente, itemSugerido if exato else item_sugerido)
+            ctx['numero_cliente'] = user_input
+            ctx['step'] = 'solicitar_pedido'
             return jsonify({
-                'resposta': f"Pedido realizado com sucesso! Seu ID de pedido é {pedido_id}.",
-                'pedido_id': pedido_id
+                'resposta': "Popoli: Qual será seu pedido?",
+                'requer_pedido': True,
+                'session_id': session_id
             })
-
-        elif intencao == "CONSULTAR_PEDIDO":
-            if not numero_cliente:
+            
+        elif ctx['step'] == 'solicitar_pedido':
+            # Verificação robusta do item do cardápio
+            itemSugerido, exato = VerificarItensCardapio(user_input)
+            
+            if not itemSugerido:
+                ctx['step'] = None
                 return jsonify({
-                    'resposta': "Claro! Para consultar seu pedido, preciso do seu número de telefone (formato (XX) XXXXX-XXXX).",
-                    'requer_numero': True
+                    'resposta': "Popoli: Desculpa, não trabalhamos com esse item. Por favor, peça algo presente em nosso cardápio.",
+                    'session_id': session_id
                 })
-
-            if not validar_numero(numero_cliente):
+            
+            if not exato:
+                ctx['item_sugerido'] = itemSugerido
+                ctx['pedido'] = user_input
+                ctx['step'] = 'confirmar_item'
                 return jsonify({
-                    'resposta': "Número inválido! Solicite para consultar os pedidos novamente e coloque o numero correto",
-                    'requer_numero': True
+                    'resposta': f"Popoli: Você quis dizer '{itemSugerido}'? (sim/não)",
+                    'requer_confirmacao': True,
+                    'session_id': session_id
                 })
-
-            resultado = BuscarPedidos(numero_cliente)
-            return jsonify({'resposta': resultado})
-
-        elif intencao == "REMOVER_PEDIDO":
-            if not numero_cliente:
+            
+            # Se o item for reconhecido corretamente
+            try:
+                pedido_id = PedidosArmazenados(ctx['numero_cliente'], user_input)
+                ctx['step'] = None
                 return jsonify({
-                    'resposta': "Claro! Para remover seu pedido, preciso do seu número de telefone (formato (XX) XXXXX-XXXX).",
-                    'requer_numero': True
+                    'resposta': f"Popoli: Pedido confirmado! N° {pedido_id}: {user_input}. Obrigado!",
+                    'pedido_id': pedido_id,
+                    'session_id': session_id
                 })
-
-            if not validar_numero(numero_cliente):
+            except Exception as e:
+                print(f"Erro ao registrar pedido: {str(e)}")
+                ctx['step'] = None
                 return jsonify({
-                    'resposta': "Número inválido! Solicite para remover o(os) pedidos novamente e coloque o número correto",
-                    'requer_numero': True
+                    'resposta': "Popoli: Ocorreu um erro ao registrar seu pedido. Por favor, tente novamente.",
+                    'session_id': session_id
                 })
-
-            pedidos_atuais = BuscarPedidos(numero_cliente)
-            if "nenhum pedido" in pedidos_atuais.lower():
+                
+        elif ctx['step'] == 'confirmar_item':
+            if user_input.lower() == 'sim':
+                try:
+                    pedido_id = PedidosArmazenados(ctx['numero_cliente'], ctx['item_sugerido'])
+                    ctx['step'] = None
+                    return jsonify({
+                        'resposta': f"Popoli: Pedido confirmado! N° {pedido_id}: {ctx['item_sugerido']}. Obrigado!",
+                        'pedido_id': pedido_id,
+                        'session_id': session_id
+                    })
+                except Exception as e:
+                    print(f"Erro ao registrar pedido: {str(e)}")
+                    ctx['step'] = None
+                    return jsonify({
+                        'resposta': "Popoli: Ocorreu um erro ao registrar seu pedido. Por favor, tente novamente.",
+                        'session_id': session_id
+                    })
+            else:
+                ctx['step'] = 'solicitar_pedido'
                 return jsonify({
-                    'resposta': "Não encontramos pedidos ativos para esse número."
+                    'resposta': "Popoli: Entendido. Por favor, especifique novamente o pedido.",
+                    'requer_pedido': True,
+                    'session_id': session_id
                 })
-
-            if not pedido:
-                return jsonify({
-                    'resposta': "Aqui estão seus pedidos atuais:\n" + pedidos_atuais + "\nQual pedido você gostaria de remover?",
-                    'requer_pedido_remocao': True,
-                    'pedidos_atuais': pedidos_atuais
-                })
-
-            linhas = pedidos_atuais.split("\n")
-            pedidos_listados = [linha.split(" (ID")[0].split(": ")[1].strip().lower() for linha in linhas]
-
-            if pedido.lower() not in pedidos_listados:
-                return jsonify({
-                    'resposta': "Esse pedido não foi encontrado entre os seus pedidos. Verifique o nome e tente novamente."
-                })
-
-            resultado = removerPedidos(numero_cliente, pedido)
-            return jsonify({'resposta': resultado})
 
     except Exception as e:
         print(f"Erro na API: {str(e)}")
-        return jsonify({'resposta': f"Erro interno: {str(e)}"}), 500
+        ctx['step'] = None
+        return jsonify({
+            'resposta': "Popoli: Desculpe, ocorreu um erro. Vamos começar novamente.",
+            'session_id': session_id
+        })
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

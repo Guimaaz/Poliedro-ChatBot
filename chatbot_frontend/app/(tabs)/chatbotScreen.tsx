@@ -1,6 +1,6 @@
-import React, { useState, useRef } from "react";
-import { View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet, SafeAreaView, useWindowDimensions, Keyboard } from 'react-native';
-import axios from 'axios';
+import React, { useState, useRef, useEffect } from "react";
+import { View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet, SafeAreaView, useWindowDimensions, Keyboard, Alert } from 'react-native';
+import { sendMessage, testConnection } from '../../utils/api';
 
 type Message = {
   id: string;
@@ -15,40 +15,72 @@ type Contexto = {
   pedidos_atuais?: string;
 };
 
-const API_URL = 'http://192.168.15.13:5000/chat';
-
 export default function ChatScreen() {
   const { width } = useWindowDimensions();
   const containerWidth = width < 600 ? width * 0.9 : 1000;
   const flatListRef = useRef<FlatList>(null);
 
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<Message[]>([
+    { id: '1', text: 'Olá! Sou o assistente do restaurante. Como posso ajudar?', sender: 'bot' }
+  ]);
   const [inputText, setInputText] = useState('');
   const [contexto, setContexto] = useState<Contexto>({});
   const [inputPlaceholder, setInputPlaceholder] = useState('Digite sua mensagem...');
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    // Testar conexão ao iniciar
+    const init = async () => {
+      const { success, error } = await testConnection();
+      if (!success) {
+        addBotMessage(`⚠️ Problema de conexão: ${error}\nVerifique seu servidor.`);
+      }
+    };
+    init();
+  }, []);
+
+  const addBotMessage = (text: string) => {
+    const newMessage: Message = {
+      id: Date.now().toString(),
+      text,
+      sender: 'bot'
+    };
+    setMessages(prev => [...prev, newMessage]);
+  };
 
   const enviarMensagem = async (mensagem: string) => {
     try {
-      const dataToSend = {
+      const payload = {
         mensagem,
         ...contexto,
-        ...(contexto.esperando === 'confirmacao' && { confirmacao: mensagem.toLowerCase() }),
+        ...(contexto.esperando === 'confirmacao' && { 
+          confirmacao: mensagem.toLowerCase(),
+          item_sugerido: contexto.item_sugerido 
+        }),
         ...(contexto.esperando === 'pedido' && { pedido: mensagem }),
-        ...(contexto.esperando === 'pedido_remocao' && { pedido: mensagem })
+        ...(contexto.esperando === 'pedido_remocao' && { 
+          pedido: mensagem,
+          pedidos_atuais: contexto.pedidos_atuais 
+        })
       };
 
-      const response = await axios.post(API_URL, dataToSend);
-      return response.data;
+      console.log('Enviando para API:', payload);
+      const response = await sendMessage(payload);
+      console.log('Resposta da API:', response);
+      
+      return response;
+
     } catch (error) {
-      console.error('Erro ao enviar mensagem:', error);
-      return { resposta: 'Erro ao conectar com o servidor.' };
+      console.error('Erro ao enviar:', error);
+      return { resposta: 'Erro ao processar requisição', error: true };
     }
   };
 
   const handleSend = async () => {
-    if (!inputText.trim()) return;
+    if (!inputText.trim() || isLoading) return;
 
     Keyboard.dismiss();
+    setIsLoading(true);
     
     // Adiciona mensagem do usuário
     const userMessage: Message = { 
@@ -63,38 +95,42 @@ export default function ChatScreen() {
     const respostaApi = await enviarMensagem(inputText);
     
     // Adiciona resposta do bot
-    const botMessage: Message = { 
-      id: (Date.now() + 1).toString(), 
-      text: respostaApi.resposta, 
-      sender: 'bot' 
-    };
-    setMessages(prev => [...prev, botMessage]);
+    if (respostaApi.error) {
+      addBotMessage(respostaApi.resposta);
+    } else {
+      addBotMessage(respostaApi.resposta);
+      // Atualiza contexto se necessário
+      if (respostaApi.contexto) {
+        setContexto(respostaApi.contexto);
+        updatePlaceholder(respostaApi.contexto);
+      } else {
+        setContexto({});
+        setInputPlaceholder('Digite sua mensagem...');
+      }
+    }
 
-    // Atualiza contexto e placeholder
-    atualizarContexto(respostaApi);
-    
-    // Rola para a última mensagem
-    setTimeout(() => {
-      flatListRef.current?.scrollToEnd({ animated: true });
-    }, 100);
+    setIsLoading(false);
+    scrollToBottom();
   };
 
-  const atualizarContexto = (respostaApi: any) => {
-    const novoContexto = respostaApi.contexto || {};
-    setContexto(novoContexto);
-
-    // Atualiza placeholder baseado no contexto
-    if (novoContexto.esperando === 'numero') {
+  const updatePlaceholder = (ctx: Contexto) => {
+    if (ctx.esperando === 'numero') {
       setInputPlaceholder('Digite seu número (XX) XXXXX-XXXX');
-    } else if (novoContexto.esperando === 'pedido') {
+    } else if (ctx.esperando === 'pedido') {
       setInputPlaceholder('Qual é o seu pedido?');
-    } else if (novoContexto.esperando === 'confirmacao') {
-      setInputPlaceholder('Digite "sim" ou "não"');
-    } else if (novoContexto.esperando === 'pedido_remocao') {
+    } else if (ctx.esperando === 'confirmacao') {
+      setInputPlaceholder('Responda "sim" ou "não"');
+    } else if (ctx.esperando === 'pedido_remocao') {
       setInputPlaceholder('Qual pedido deseja remover?');
     } else {
       setInputPlaceholder('Digite sua mensagem...');
     }
+  };
+
+  const scrollToBottom = () => {
+    setTimeout(() => {
+      flatListRef.current?.scrollToEnd({ animated: true });
+    }, 100);
   };
 
   const renderMessage = ({ item }: { item: Message }) => (
@@ -115,7 +151,8 @@ export default function ChatScreen() {
           keyExtractor={(item) => item.id}
           renderItem={renderMessage}
           contentContainerStyle={styles.chatContainer}
-          onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+          onContentSizeChange={scrollToBottom}
+          onLayout={scrollToBottom}
         />
 
         <View style={styles.inputContainer}>
@@ -126,9 +163,17 @@ export default function ChatScreen() {
             onChangeText={setInputText}
             onSubmitEditing={handleSend}
             multiline
+            editable={!isLoading}
+            placeholderTextColor="#999"
           />
-          <TouchableOpacity onPress={handleSend} style={styles.sendButton}>
-            <Text style={styles.sendButtonText}>Enviar</Text>
+          <TouchableOpacity 
+            onPress={handleSend} 
+            style={[styles.sendButton, isLoading && styles.disabledButton]}
+            disabled={isLoading}
+          >
+            <Text style={styles.sendButtonText}>
+              {isLoading ? '...' : 'Enviar'}
+            </Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -148,15 +193,26 @@ const styles = StyleSheet.create({
     margin: 20,
     alignSelf: 'center',
     overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   chatContainer: {
     padding: 20,
+    paddingBottom: 10,
   },
   messageBubble: {
     maxWidth: '80%',
     padding: 15,
     borderRadius: 20,
     marginVertical: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 2,
   },
   userBubble: {
     alignSelf: 'flex-end',
@@ -176,7 +232,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     padding: 15,
     borderTopWidth: 1,
-    borderColor: '#ccc',
+    borderColor: '#ddd',
     backgroundColor: '#fff',
     alignItems: 'center',
   },
@@ -190,6 +246,7 @@ const styles = StyleSheet.create({
     borderRadius: 25,
     marginRight: 10,
     paddingVertical: 12,
+    backgroundColor: '#fff',
   },
   sendButton: {
     backgroundColor: '#465575',
@@ -197,8 +254,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     borderRadius: 25,
   },
+  disabledButton: {
+    backgroundColor: '#aaa',
+  },
   sendButtonText: {
     color: '#fff',
     fontWeight: 'bold',
+    fontSize: 16,
   },
 });
