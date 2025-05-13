@@ -4,3 +4,7 @@
 
 expo-env.d.ts
 # @end expo-cli
+
+
+chatbot_frontend/expo-env.d.ts
+chatbot_frontend/.expo/types/router.d.ts
