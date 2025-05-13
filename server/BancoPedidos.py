@@ -91,20 +91,20 @@ def PedidosArmazenados(numero_cliente, pedido):
 
 
 
-def removerPedidos(numero_cliente, pedido):
+def removerPedidos(numero_cliente, pedidos):
     try:
-        conn = sqlite3.connect('pedidos.db')
+        conn = sqlite3.connect('chatbot.db')
         cursor = conn.cursor()
         
         # Primeiro verifica se o pedido existe
-        cursor.execute("SELECT * FROM pedidos WHERE numero_cliente = ? AND pedido = ?", 
-                      (numero_cliente, pedido))
+        cursor.execute("SELECT * FROM pedidos WHERE numero_cliente = ? AND item = ?", 
+                      (numero_cliente, pedidos))
         if not cursor.fetchone():
             return "Pedido não encontrado"
         
         # Remove o pedido
-        cursor.execute("DELETE FROM pedidos WHERE numero_cliente = ? AND pedido = ?", 
-                      (numero_cliente, pedido))
+        cursor.execute("DELETE FROM pedidos WHERE numero_cliente = ? AND item = ?", 
+                      (numero_cliente, pedidos))
         conn.commit()
         
         if cursor.rowcount > 0:
