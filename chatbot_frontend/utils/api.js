@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://192.168.15.13:5000';
+const API_BASE_URL = 'http://10.2.129.104:5000';
 
 export const sendMessage = async (messageData) => {
   try {
