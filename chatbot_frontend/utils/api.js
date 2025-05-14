@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://192.168.15.13:5000';
+const API_BASE_URL = 'http://172.20.10.3:5000';
 
 export const sendMessage = async (messageData) => {
   try {
@@ -26,7 +26,7 @@ export const sendMessage = async (messageData) => {
     }
     
     return { 
-      resposta: `${errorMessage}\nVerifique:\n1. Servidor rodando\n2. IP correto\n3. Mesma rede`,
+      resposta: `${errorMessage}\nVerifique:\n1. Servidor rodando\n2. ip certo de acordo com a rede`,
       error: true
     };
   }

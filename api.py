@@ -258,7 +258,7 @@ def chat():
         print(f"Erro na API: {str(e)}")
         ctx['step'] = None
         return jsonify({
-            'resposta': " Desculpe, ocorreu um erro. Vamos começar novamente.",
+            'resposta': " Desculpe, ocorreu um erro. \nChaveAPI não encontrada.",
             'id_conversa': id_conversa
         })
 
