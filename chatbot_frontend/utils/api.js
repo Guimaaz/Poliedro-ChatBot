@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://10.2.129.104:5000';
+export const API_BASE_URL = 'http://172.20.10.3:5000'; 
 
 export const sendMessage = async (messageData) => {
   try {
@@ -17,15 +17,15 @@ export const sendMessage = async (messageData) => {
       response: error.response?.data,
       code: error.code
     });
-    
+
     let errorMessage = 'Erro de conexão';
     if (error.response) {
       errorMessage = error.response.data.resposta || 'Erro no servidor';
     } else if (error.request) {
       errorMessage = 'Servidor não respondeu';
     }
-    
-    return { 
+
+    return {
       resposta: `${errorMessage}\nVerifique:\n1. Servidor rodando\n2. IP correto\n3. Mesma rede`,
       error: true
     };
@@ -37,10 +37,10 @@ export const testConnection = async () => {
     const response = await axios.get(`${API_BASE_URL}/teste`, { timeout: 3000 });
     return { success: true, data: response.data };
   } catch (error) {
-    return { 
-      success: false, 
+    return {
+      success: false,
       error: error.message,
-      details: error.response?.data 
+      details: error.response?.data
     };
   }
 };

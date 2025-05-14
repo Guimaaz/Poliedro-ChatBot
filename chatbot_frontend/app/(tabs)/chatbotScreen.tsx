@@ -1,6 +1,10 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet, SafeAreaView, useWindowDimensions, Keyboard, Alert } from 'react-native';
-import { sendMessage, testConnection } from '../../utils/api';
+import { sendMessage } from '../../utils/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../../navigation';
 
 type Message = {
   id: string;
@@ -9,16 +13,18 @@ type Message = {
 };
 
 type Contexto = {
-  numero_cliente?: string;
-  esperando?: 'numero' | 'pedido' | 'confirmacao' | 'pedido_remocao';
+  esperando?: 'pedido' | 'confirmacao' | 'pedido_remocao';
   item_sugerido?: string;
   pedidos_atuais?: string;
 };
+
+type ChatbotScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'ChatScreen'>;
 
 export default function ChatScreen() {
   const { width } = useWindowDimensions();
   const containerWidth = width < 600 ? width * 0.9 : 1000;
   const flatListRef = useRef<FlatList>(null);
+  const navigation = useNavigation<ChatbotScreenNavigationProp>();
 
   const [messages, setMessages] = useState<Message[]>([
     { id: '1', text: 'Olá! Sou o assistente do restaurante. Como posso ajudar?', sender: 'bot' }
@@ -27,8 +33,28 @@ export default function ChatScreen() {
   const [contexto, setContexto] = useState<Contexto>({});
   const [inputPlaceholder, setInputPlaceholder] = useState('Digite sua mensagem...');
   const [isLoading, setIsLoading] = useState(false);
+  const [userPhoneNumber, setUserPhoneNumber] = useState<string | null>(null);
 
+  useFocusEffect(
+    useCallback(() => {
+      let isActive = true;
 
+      const getPhoneNumber = async () => {
+        const phoneNumber = await AsyncStorage.getItem('userPhoneNumber');
+        if (isActive) {
+          setUserPhoneNumber(phoneNumber);
+        } else {
+          setUserPhoneNumber(null);
+        }
+      };
+
+      getPhoneNumber();
+
+      return () => {
+        isActive = false;
+      };
+    }, [])
+  );
 
   const addBotMessage = (text: string) => {
     const newMessage: Message = {
@@ -39,26 +65,33 @@ export default function ChatScreen() {
     setMessages(prev => [...prev, newMessage]);
   };
 
-  const enviarMensagem = async (mensagem: string) => {
+  const enviarMensagem = async (mensagem: string, currentPhoneNumber: string | null) => {
+    if (!currentPhoneNumber) {
+      Alert.alert('Erro', 'Usuário não autenticado. Por favor, faça login novamente.');
+      navigation.navigate('LoginScreen');
+      return { resposta: 'Erro de autenticação', error: true };
+    }
+
     try {
       const payload = {
         mensagem,
+        numero_cliente: currentPhoneNumber,
         ...contexto,
-        ...(contexto.esperando === 'confirmacao' && { 
+        ...(contexto.esperando === 'confirmacao' && {
           confirmacao: mensagem.toLowerCase(),
-          item_sugerido: contexto.item_sugerido 
+          item_sugerido: contexto.item_sugerido
         }),
         ...(contexto.esperando === 'pedido' && { pedido: mensagem }),
-        ...(contexto.esperando === 'pedido_remocao' && { 
+        ...(contexto.esperando === 'pedido_remocao' && {
           pedido: mensagem,
-          pedidos_atuais: contexto.pedidos_atuais 
+          pedidos_atuais: contexto.pedidos_atuais
         })
       };
 
       console.log('Enviando para API:', payload);
       const response = await sendMessage(payload);
       console.log('Resposta da API:', response);
-      
+
       return response;
 
     } catch (error) {
@@ -68,29 +101,25 @@ export default function ChatScreen() {
   };
 
   const handleSend = async () => {
-    if (!inputText.trim() || isLoading) return;
+    if (!inputText.trim() || isLoading || !userPhoneNumber) return;
 
     Keyboard.dismiss();
     setIsLoading(true);
-    
-    // Adiciona mensagem do usuário
-    const userMessage: Message = { 
-      id: Date.now().toString(), 
-      text: inputText, 
-      sender: 'user' 
+
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      text: inputText,
+      sender: 'user'
     };
     setMessages(prev => [...prev, userMessage]);
     setInputText('');
 
-    // Processa a resposta da API
-    const respostaApi = await enviarMensagem(inputText);
-    
-    // Adiciona resposta do bot
+    const respostaApi = await enviarMensagem(inputText, userPhoneNumber);
+
     if (respostaApi.error) {
       addBotMessage(respostaApi.resposta);
     } else {
       addBotMessage(respostaApi.resposta);
-      // Atualiza contexto se necessário
       if (respostaApi.contexto) {
         setContexto(respostaApi.contexto);
         updatePlaceholder(respostaApi.contexto);
@@ -105,9 +134,7 @@ export default function ChatScreen() {
   };
 
   const updatePlaceholder = (ctx: Contexto) => {
-    if (ctx.esperando === 'numero') {
-      setInputPlaceholder('Digite seu número (XX) XXXXX-XXXX');
-    } else if (ctx.esperando === 'pedido') {
+    if (ctx.esperando === 'pedido') {
       setInputPlaceholder('Qual é o seu pedido?');
     } else if (ctx.esperando === 'confirmacao') {
       setInputPlaceholder('Responda "sim" ou "não"');
@@ -126,7 +153,7 @@ export default function ChatScreen() {
 
   const renderMessage = ({ item }: { item: Message }) => (
     <View style={[
-      styles.messageBubble, 
+      styles.messageBubble,
       item.sender === 'user' ? styles.userBubble : styles.botBubble
     ]}>
       <Text style={styles.MessageText}>{item.text}</Text>
@@ -152,19 +179,23 @@ export default function ChatScreen() {
             value={inputText}
             onChangeText={setInputText}
             onSubmitEditing={handleSend}
+            
             editable={!isLoading}
             placeholderTextColor="#999"
           />
-          <TouchableOpacity 
-            onPress={handleSend} 
-            style={[styles.sendButton, isLoading && styles.disabledButton]}
-            disabled={isLoading}
+          <TouchableOpacity
+            onPress={handleSend}
+            style={[styles.sendButton, isLoading || !userPhoneNumber ? styles.disabledButton : {}]}
+            disabled={isLoading || !userPhoneNumber}
           >
             <Text style={styles.sendButtonText}>
               {isLoading ? '...' : 'Enviar'}
 
             </Text>
           </TouchableOpacity>
+          {!userPhoneNumber && (
+            <Text style={styles.authWarning}>Por favor, faça login para interagir.</Text>
+          )}
         </View>
       </View>
     </SafeAreaView>
@@ -251,5 +282,11 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: 'bold',
     fontSize: 16,
+  },
+  authWarning: {
+    color: 'red',
+    fontSize: 12,
+    marginTop: 5,
+    alignSelf: 'center',
   },
 });
