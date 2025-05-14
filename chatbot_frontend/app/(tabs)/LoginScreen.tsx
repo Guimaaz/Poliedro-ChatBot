@@ -1,32 +1,68 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, SafeAreaView, useWindowDimensions } from 'react-native';
-// safeareaview garente que os itens dos celulares nao sobreponham a interface, por exemplo o dentinho do iphone
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, SafeAreaView, useWindowDimensions, Alert } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useNavigation } from '@react-navigation/native';
+import { API_BASE_URL } from '../../utils/api';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../../navigation';
 
+type LoginScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'LoginScreen'>;
 
-export default function App() {
+export default function LoginScreen() {
   const [telefone, setTelefone] = useState('');
   const [senha, setSenha] = useState('');
-  
-  const { width } = useWindowDimensions(); // atualiza o tamanho da tela em tempo real ( ou seja, dependendo do tamanho da tela do celular, estando deitado ou nao, ele pega em tempo real e utiliza no const abaixo)
+  const [loading, setLoading] = useState(false);
+  const { width } = useWindowDimensions();
   const inputWidth = width < 600 ? width * 0.7 : 700;
-  const containerWidth = width < 600 ? width * 0.9 : 1000; // o mesmo, mas para o container
-  const handleLogin = () => {
-    //teste de quando é funcional o alert
-    alert('Login clicado!');
-  };
+  const containerWidth = width < 600 ? width * 0.9 : 1000;
+  const navigation = useNavigation<LoginScreenNavigationProp>();
 
-  
+  const handleLogin = async () => {
+    if (!telefone || !senha) {
+      Alert.alert('Erro', 'Por favor, preencha todos os campos.');
+      return;
+    }
+
+    setLoading(true);
+    console.log('Fazendo requisição de login...', { numero_cliente: telefone, senha });
+    try {
+    const response = await fetch(`${API_BASE_URL}/login`, {
+  method: 'POST', // Certifique-se de que este método seja 'POST'
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({ numero_cliente: telefone, senha }),
+});
+
+    console.log('Resposta bruta da API de login:', response); // Adicione este log
+    const data = await response.json();
+    console.log('Dados da resposta da API de login:', data); // Adicione este log
+
+    if (response.ok && data.success) {
+      await AsyncStorage.setItem('userPhoneNumber', telefone);
+      Alert.alert('Sucesso', 'Login realizado com sucesso!');
+      navigation.navigate('ChatScreen');
+    } else {
+      Alert.alert('Erro', data.message || 'Falha ao realizar o login. Verifique suas credenciais.');
+    }
+  } catch (error) {
+    console.error('Erro ao realizar login:', error);
+    Alert.alert('Erro', 'Ocorreu um erro ao comunicar com o servidor.');
+  } finally {
+    setLoading(false);
+  }
+};
+
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View style={[styles.container, {width : containerWidth }]}>
+      <View style={[styles.container, { width: containerWidth }]}>
         <View style={styles.topContainer}>
           <Image
-             source={require('../../assets/images/logopoliedro.png')}
+            source={require('../../assets/images/logopoliedro.png')}
             style={styles.logo}
             resizeMode="contain"
           />
         </View>
-
 
         <View style={styles.loginContainer}>
           <Text style={styles.title}>Login</Text>
@@ -47,12 +83,11 @@ export default function App() {
             onChangeText={setSenha}
           />
 
-          <TouchableOpacity style={styles.button} onPress={handleLogin}>
-            <Text style={styles.buttonText}>Entrar</Text>
+          <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={loading}>
+            <Text style={styles.buttonText}>{loading ? 'Entrando...' : 'Entrar'}</Text>
           </TouchableOpacity>
         </View>
 
-        
         <View style={styles.bottomRounded} />
       </View>
     </SafeAreaView>
@@ -62,11 +97,11 @@ export default function App() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#4B3D3D',  // atras do container o vinho
+    backgroundColor: '#4B3D3D',
   },
   container: {
     flex: 1,
-    backgroundColor: '#e0e0e0', // fundo principal
+    backgroundColor: '#e0e0e0',
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
     borderBottomLeftRadius: 30,
@@ -74,7 +109,6 @@ const styles = StyleSheet.create({
     margin: 20,
     overflow: 'hidden',
     alignSelf: 'center'
-    
   },
   topContainer: {
     backgroundColor: '#fff',
@@ -98,8 +132,7 @@ const styles = StyleSheet.create({
     fontSize: 28,
     marginBottom: 40,
     color: '#000',
-    fontFamily : "Cal Sans"
-
+    fontFamily: "Cal Sans"
   },
   input: {
     height: 50,
@@ -124,6 +157,5 @@ const styles = StyleSheet.create({
   bottomRounded: {
     height: 50,
     backgroundColor: '#5C75A7',
-    
   },
 });

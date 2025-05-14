@@ -8,7 +8,9 @@ from server.BancoPedidos import (
     PedidosArmazenados,
     BuscarPedidos,
     removerPedidos,
-    VerificarItensCardapio
+    VerificarItensCardapio,
+    registrar_cliente,
+    autenticar_cliente
 )
 import re
 import os
@@ -19,254 +21,209 @@ from pathlib import Path
 app = Flask(__name__)
 CORS(app)
 
- # pega o dotenv que é onde esta a api do gemini
 load_dotenv(dotenv_path=Path('.') / '.env')
 genai.configure(api_key=os.getenv("API_KEY"))
 model = genai.GenerativeModel("gemini-1.5-flash")
 
-#gera o banco, caso ele ainda não exista ( esta local )
 CreateDatabase()
 
-#criamos um dicionario para manter o contexto da conversa
-conversa_contexto = {}
-
 def extrair_intencao(texto):
-    match = re.search(r'INTENÇÃO:\s*(FAZER_PEDIDO|CONSULTAR_PEDIDO|REMOVER_PEDIDO)', texto, re.IGNORECASE)
+    match = re.search(r'INTENÇÃO:\s*(FAZER_PEDIDO|CONSULTAR_PEDIDO|REMOVER_PEDIDO|VER_CARDAPIO|OUTRA)', texto, re.IGNORECASE)
     return match.group(1).upper() if match else None
 
-#inicio da rota com a api por método post, input do usuário
+@app.route('/register', methods=['POST'])
+def register():
+    data = request.json
+    numero_cliente = data.get('numero_cliente')
+    senha = data.get('senha')
+
+    if not numero_cliente or not senha:
+        return jsonify({'success': False, 'message': 'Número de telefone e senha são obrigatórios.'}), 400
+
+    mensagem = registrar_cliente(numero_cliente, senha)
+    if "sucesso" in mensagem.lower():
+        return jsonify({'success': True, 'message': mensagem}), 201
+    else:
+        return jsonify({'success': False, 'message': mensagem}), 400
+
+@app.route('/login', methods=['OPTIONS'])
+def handle_login_options():
+    """Handles OPTIONS requests for /login."""
+    response = jsonify()
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    response.headers.add('Access-Control-Allow-Methods', 'POST, OPTIONS')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
+    return response
+
+@app.route('/login', methods=['POST'])
+def login():
+    data = request.json
+    numero_cliente = data.get('numero_cliente')
+    senha = data.get('senha')
+
+    print(f"Recebida tentativa de login para: {numero_cliente}")
+    print(f"Senha fornecida: {senha}")
+
+    if not numero_cliente or not senha:
+        print("Erro: Número de telefone e senha são obrigatórios.")
+        return jsonify({'success': False, 'message': 'Número de telefone e senha são obrigatórios.'}), 400
+
+    if autenticar_cliente(numero_cliente, senha):
+        print(f"Login bem-sucedido para: {numero_cliente}")
+        return jsonify({'success': True, 'message': 'Login realizado com sucesso!'}), 200
+    else:
+        print(f"Falha no login para: {numero_cliente}")
+        return jsonify({'success': False, 'message': 'Credenciais inválidas.'}), 401
+
 @app.route('/chat', methods=['POST'])
 def chat():
     data = request.json
     user_input = data.get('mensagem', '').strip()
-    id_conversa = data.get('id_conversa', 'default')
-    
-# da inicio a uma conversa, caso não tenha uma ainda
-    if id_conversa not in conversa_contexto:
-        conversa_contexto[id_conversa] = {
-            'step': None,
-            'numero_cliente': None,
-            'pedido': None,
-            'item_sugerido': None,
-            'pedido_a_remover': None
-        }
-    
-    ctx = conversa_contexto[id_conversa]
+    numero_cliente_logado = data.get('numero_cliente')
+    esperando = data.get('esperando')
+    item_sugerido = data.get('item_sugerido')
+    pedidos_atuais = data.get('pedidos_atuais')
+
+    if not numero_cliente_logado:
+        return jsonify({'resposta': 'Você precisa estar logado para usar o chatbot para pedidos.', 'error': True}), 401
 
     try:
-       #  ele verifica o passo atual da conversa, e definimos que stpe inicial é o padrão ( sem intenções, caso ele identifique uma, ele chama o os métodos para tal)
-        if not ctx['step']:
+        if esperando == 'pedido':
+            itemSugerido, exato = VerificarItensCardapio(user_input)
+
+            if not itemSugerido:
+                return jsonify({
+                    'resposta': "Desculpa, não trabalhamos com esse item. Por favor, peça algo presente em nosso cardápio.",
+                    'esperando': 'pedido'
+                })
+
+            if not exato:
+                return jsonify({
+                    'resposta': f"Você quis dizer '{itemSugerido}'? (sim/não)",
+                    'esperando': 'confirmacao',
+                    'item_sugerido': itemSugerido,
+                    'pedido': user_input
+                })
+
+            resultado_pedido = PedidosArmazenados(numero_cliente_logado, user_input)
+            return jsonify({
+                'resposta': f"{resultado_pedido}"
+            })
+
+        elif esperando == 'confirmacao':
+            if user_input.lower() in ['sim', 's']:
+                resultado_confirmacao = PedidosArmazenados(numero_cliente_logado, item_sugerido)
+                return jsonify({
+                    'resposta': f"{resultado_confirmacao}"
+                })
+            else:
+                return jsonify({
+                    'resposta': "Entendido. Por favor, especifique novamente o pedido.",
+                    'esperando': 'pedido'
+                })
+
+        elif esperando == 'pedido_remocao':
+            pedido_remover = user_input.strip()
+            resultado_remocao = removerPedidos(numero_cliente_logado, pedido_remover)
+            return jsonify({
+                'resposta': resultado_remocao
+            })
+
+        else:
             response = model.generate_content([{"role": "user", "parts": [prompt_completo + user_input]}])
             bot_reply = response.text.strip()
             intencao = extrair_intencao(bot_reply)
-            
+
             if not intencao:
-                return jsonify({'resposta': bot_reply, 'id_conversa': id_conversa})
-            
+                return jsonify({'resposta': bot_reply})
+
             if intencao == "FAZER_PEDIDO":
-                ctx['step'] = 'solicitar_numero'
+                resposta_pedido = "Certo! Qual será seu pedido?"
                 return jsonify({
-                    'resposta': " Certo! Vamos fazer seu pedido. Por favor, informe seu número de telefone (formato (XX) XXXXX-XXXX).",
-                    'requer_numero': True,
-                    'id_conversa': id_conversa
-                })
-            
-            elif intencao == "CONSULTAR_PEDIDO":
-                ctx['step'] = 'consultar_numero'
-                return jsonify({
-                    'resposta': " Claro! Para consultar seu pedido, preciso do seu número de telefone (formato (XX) XXXXX-XXXX).",
-                    'requer_numero': True,
-                    'id_conversa': id_conversa
-                })
-            
-            elif intencao == "REMOVER_PEDIDO":
-                ctx['step'] = 'remover_numero'
-                return jsonify({
-                    'resposta': " Claro! Para remover seu pedido, preciso do seu número de telefone (formato (XX) XXXXX-XXXX).",
-                    'requer_numero': True,
-                    'id_conversa': id_conversa
+                    'resposta': resposta_pedido,
+                    'esperando': 'pedido'
                 })
 
-        # parte do numero para pedidos
-        if ctx['step'] == 'solicitar_numero':
-            if not validar_numero(user_input):
+            elif intencao == "CONSULTAR_PEDIDO":
+                resultado = BuscarPedidos(numero_cliente_logado)
                 return jsonify({
-                    'resposta': " Número inválido! Por favor, use o formato (XX) XXXXX-XXXX.",
-                    'requer_numero': True,
-                    'id_conversa': id_conversa
+                    'resposta': resultado
                 })
-            
-            ctx['numero_cliente'] = user_input
-            ctx['step'] = 'solicitar_pedido'
-            return jsonify({
-                'resposta': " Qual será seu pedido?",
-                'requer_pedido': True,
-                'id_conversa': id_conversa
-            })
-            
-        elif ctx['step'] == 'solicitar_pedido':
-            itemSugerido, exato = VerificarItensCardapio(user_input)
-            
-            if not itemSugerido:
-                ctx['step'] = None
-                return jsonify({
-                    'resposta': " Desculpa, não trabalhamos com esse item. Por favor, peça algo presente em nosso cardápio.",
-                    'id_conversa': id_conversa
-                })
-            
-            if not exato:
-                ctx['item_sugerido'] = itemSugerido
-                ctx['pedido'] = user_input
-                ctx['step'] = 'confirmar_item'
-                return jsonify({
-                    'resposta': f" Você quis dizer '{itemSugerido}'? (sim/não)",
-                    'requer_confirmacao': True,
-                    'id_conversa': id_conversa
-                })
-            
-            try:
-                pedido_id = PedidosArmazenados(ctx['numero_cliente'], user_input)
-                ctx['step'] = None
-                return jsonify({
-                    'resposta': f" Pedido confirmado! N° {pedido_id}: {user_input}. Obrigado!",
-                    'pedido_id': pedido_id,
-                    'id_conversa': id_conversa
-                })
-            except Exception as e:
-                print(f"Erro ao registrar pedido: {str(e)}")
-                ctx['step'] = None
-                return jsonify({
-                    'resposta': " Ocorreu um erro ao registrar seu pedido. Por favor, tente novamente.",
-                    'id_conversa': id_conversa
-                })
-                
-        elif ctx['step'] == 'confirmar_item':
-            if user_input.lower() in ['sim', 's']:
-                try:
-                    pedido_id = PedidosArmazenados(ctx['numero_cliente'], ctx['item_sugerido'])
-                    ctx['step'] = None
+
+            elif intencao == "REMOVER_PEDIDO":
+                pedidos_atuais_texto = BuscarPedidos(numero_cliente_logado)
+                if "nenhum pedido" in pedidos_atuais_texto.lower():
                     return jsonify({
-                        'resposta': f" Pedido confirmado! N° {pedido_id}: {ctx['item_sugerido']}. Obrigado!",
-                        'pedido_id': pedido_id,
-                        'id_conversa': id_conversa
+                        'resposta': "Não encontramos pedidos ativos para este número."
                     })
-                except Exception as e:
-                    print(f"Erro ao registrar pedido: {str(e)}")
-                    ctx['step'] = None
-                    return jsonify({
-                        'resposta': " Ocorreu um erro ao registrar seu pedido. Por favor, tente novamente.",
-                        'id_conversa': id_conversa
-                    })
-            else:
-                ctx['step'] = 'solicitar_pedido'
                 return jsonify({
-                    'resposta': " Entendido. Por favor, especifique novamente o pedido.",
-                    'requer_pedido': True,
-                    'id_conversa': id_conversa
+                    'resposta': f"Aqui estão seus pedidos atuais:\n{pedidos_atuais_texto}\n\nPor favor, digite o NOME EXATO do pedido que deseja remover:",
+                    'esperando': 'pedido_remocao',
+                    'pedidos_atuais': pedidos_atuais_texto
                 })
-        
-        #  parte da consulta dos pedidos
-        elif ctx['step'] == 'consultar_numero':
-            if not validar_numero(user_input):
-                return jsonify({
-                    'resposta': " Número inválido! Por favor, use o formato (XX) XXXXX-XXXX.",
-                    'requer_numero': True,
-                    'id_conversa': id_conversa
-                })
-            
-            resultado = BuscarPedidos(user_input)
-            ctx['step'] = None
-            return jsonify({
-                'resposta': resultado,
-                'id_conversa': id_conversa
-            })
-        
-        # parte da remoção de pedidos
-        elif ctx['step'] == 'remover_numero':
-            if not validar_numero(user_input):
-                return jsonify({
-                    'resposta': " Número inválido! Por favor, use o formato (XX) XXXXX-XXXX.",
-                    'requer_numero': True,
-                    'id_conversa': id_conversa
-                })
-            
-            ctx['numero_cliente'] = user_input
-            try:
-                pedidos_atuais = BuscarPedidos(user_input)
-                
-                if "nenhum pedido" in pedidos_atuais.lower():
-                    ctx['step'] = None
-                    return jsonify({
-                        'resposta': " Não encontramos pedidos ativos para esse número.",
-                        'id_conversa': id_conversa
-                    })
-                
-                ctx['step'] = 'selecionar_pedido_remover'
-                return jsonify({
-                    'resposta': f" Aqui estão seus pedidos atuais:\n{pedidos_atuais}\n\nPor favor, digite o NOME EXATO do pedido que deseja remover:",
-                    'requer_pedido_remover': True,
-                    'id_conversa': id_conversa
-                })
-            except Exception as e:
-                print(f"Erro ao buscar pedidos: {str(e)}")
-                ctx['step'] = None
-                return jsonify({
-                    'resposta': " Ocorreu um erro ao consultar seus pedidos. Por favor, tente novamente.",
-                    'id_conversa': id_conversa
-                })
-        
-        elif ctx['step'] == 'selecionar_pedido_remover':
-            pedido = user_input.strip()
-            try:
-                pedidos_atuais = BuscarPedidos(ctx['numero_cliente'])
-                
-                #pega a linha por linha dos pedidos nas tabelas
-                linhas = [linha for linha in pedidos_atuais.split('\n') if 'Pedido:' in linha]
-                pedidos_lista = []
-                for linha in linhas:
-                    pedido_nome = linha.split('Pedido:')[1].split('(ID')[0].strip()
-                    pedidos_lista.append(pedido_nome.lower())
-                
-                if pedido.lower() not in pedidos_lista:
-                    return jsonify({
-                        'resposta': f" Pedido '{pedido}' não encontrado. Por favor, verifique o nome e tente novamente.",
-                        'requer_pedido_remover': True,
-                        'id_conversa': id_conversa
-                    })
-                
-                resultado = removerPedidos(ctx['numero_cliente'], pedido)
-                
-                if "sucesso" in resultado.lower() or "removido" in resultado.lower():
-                    resposta = f" Pedido '{pedido}' foi removido com sucesso!"
-                else:
-                    resposta = f" {resultado}"
-                
-                ctx['step'] = None
-                return jsonify({
-                    'resposta': resposta,
-                    'id_conversa': id_conversa
-                })
-            except Exception as e:
-                print(f"Erro ao remover pedido: {str(e)}")
-                ctx['step'] = None
-                return jsonify({
-                    'resposta': f" Ocorreu um erro ao remover o pedido. Por favor, tente novamente.",
-                    'id_conversa': id_conversa
-                })
+            elif intencao == "VER_CARDAPIO":
+                cardapio_texto = """Olá! 😊
+
+Peixes
+- Filé de Salmão Grelhado - Acompanha arroz e legumes salteados - 35.90
+- Bacalhau à Brás - Bacalhau desfiado com batata palha e ovos - 42.50
+- Tilápia Empanada - Servida com purê de batata e salada verde - 28.90
+
+Frango
+- Frango à Parmegiana - Frango empanado com molho de tomate e queijo, acompanhado de arroz e batata frita - 24.90
+- Peito de Frango Grelhado - Acompanha arroz integral e salada mista - 22.50
+- Strogonoff de Frango - Servido com arroz branco e batata palha - 26.00
+
+Carnes
+- Picanha na Chapa - Acompanha arroz, feijão tropeiro e vinagrete - 58.90
+- Filé Mignon ao Molho Madeira - Servido com arroz e batata gratinada - 55.00
+- Costela Assada - Acompanha mandioca cozida e salada - 49.90
+
+Massas
+- Lasanha Bolonhesa - Camadas de massa, molho de carne e queijo - 32.90
+- Fettuccine Alfredo - Massa com molho cremoso de queijo parmesão - 30.50
+- Nhoque ao Sugo - Massa de batata com molho de tomate fresco - 27.00
+
+Vegano
+- Risoto de Cogumelos - Arroz cremoso com mix de cogumelos - 34.00
+- Hambúrguer de Grão-de-Bico - Servido com batatas rústicas - 18.90
+- Espaguete de Abobrinha - Com molho ao sugo e manjericão - 20.90
+
+Porções
+- Batata Frita - Porção generosa de batata frita crocante - 10.90
+- Isca de Peixe - Peixe empanado com molho tártaro - 15.50
+- Bolinho de Aipim - Recheado com carne seca - 12.50
+
+Sobremesas
+- Pudim de Leite - Tradicional e cremoso - 8.90
+- Torta de Limão - Massa crocante com recheio azedinho - 10.00
+- Brownie com Sorvete - Brownie de chocolate servido com sorvete de creme - 15.90
+
+Saladas
+- Caesar - Alface, croutons, parmesão e molho caesar - 14.90
+- Salada Tropical - Mix de folhas, frutas da época e molho de iogurte - 18.00
+- Salada Caprese - Tomate, muçarela de búfala, manjericão e azeite - 19.00
+
+Qual categoria te interessa mais hoje? 😋"""
+                return jsonify({'resposta': cardapio_texto})
+
+            return jsonify({'resposta': bot_reply})
 
     except Exception as e:
         print(f"Erro na API: {str(e)}")
-        ctx['step'] = None
         return jsonify({
-            'resposta': " Desculpe, ocorreu um erro. \nChaveAPI não encontrada.",
-            'id_conversa': id_conversa
+            'resposta': "Desculpe, ocorreu um erro. Por favor, tente novamente.",
+            'error': True
         })
 
+@app.route('/teste', methods=['GET'])
+def teste_conexao():
+    return jsonify({'message': 'Servidor Flask rodando!'}), 200
+
 if __name__ == '__main__':
-    #irá garantir que antes de iniciar, existirá um banco criado
     try:
         CreateDatabase()
     except Exception as e:
         print(f"Erro ao criar banco de dados: {str(e)}")
-    
+
     app.run(host='0.0.0.0', port=5000, debug=True)
