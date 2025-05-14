@@ -44,7 +44,7 @@ def CreateDatabase():
 )
 ''')
 
-    # Inserindo um usuário de teste
+    # usuários teste chumbados
     numero_teste = "(11) 99999-1111"
     numero_teste2 = "(11) 97430-6792"
     senha_teste_plana = "senha123"

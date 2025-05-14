@@ -27,16 +27,16 @@ export default function LoginScreen() {
     console.log('Fazendo requisição de login...', { numero_cliente: telefone, senha });
     try {
     const response = await fetch(`${API_BASE_URL}/login`, {
-  method: 'POST', // Certifique-se de que este método seja 'POST'
+  method: 'POST', 
   headers: {
     'Content-Type': 'application/json',
   },
   body: JSON.stringify({ numero_cliente: telefone, senha }),
 });
 
-    console.log('Resposta bruta da API de login:', response); // Adicione este log
+    console.log('Resposta bruta da API de login:', response); 
     const data = await response.json();
-    console.log('Dados da resposta da API de login:', data); // Adicione este log
+    console.log('Dados da resposta da API de login:', data); 
 
     if (response.ok && data.success) {
       await AsyncStorage.setItem('userPhoneNumber', telefone);
