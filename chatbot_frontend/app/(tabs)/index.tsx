@@ -74,7 +74,6 @@ const styles = StyleSheet.create({
     margin: 20,
     overflow: 'hidden',
     alignSelf: 'center'
-    
   },
   topContainer: {
     backgroundColor: '#fff',
@@ -98,8 +97,6 @@ const styles = StyleSheet.create({
     fontSize: 28,
     marginBottom: 40,
     color: '#000',
-    fontFamily : "Cal Sans"
-
   },
   input: {
     height: 50,
@@ -111,7 +108,7 @@ const styles = StyleSheet.create({
   },
   button: {
     width: 150,
-    backgroundColor: '#5C75A7',
+    backgroundColor: '#5497f0',
     paddingVertical: 12,
     borderRadius: 25,
     alignItems: 'center',
@@ -123,7 +120,7 @@ const styles = StyleSheet.create({
   },
   bottomRounded: {
     height: 50,
-    backgroundColor: '#5C75A7',
+    backgroundColor: '#5497f0',
     
   },
 });

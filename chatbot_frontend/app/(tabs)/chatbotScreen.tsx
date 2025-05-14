@@ -129,7 +129,7 @@ export default function ChatScreen() {
       styles.messageBubble, 
       item.sender === 'user' ? styles.userBubble : styles.botBubble
     ]}>
-      <Text style={styles.messageText}>{item.text}</Text>
+      <Text style={styles.MessageText}>{item.text}</Text>
     </View>
   );
 
@@ -145,7 +145,6 @@ export default function ChatScreen() {
           onContentSizeChange={scrollToBottom}
           onLayout={scrollToBottom}
         />
-
         <View style={styles.inputContainer}>
           <TextInput
             style={styles.input}
@@ -153,7 +152,6 @@ export default function ChatScreen() {
             value={inputText}
             onChangeText={setInputText}
             onSubmitEditing={handleSend}
-            multiline
             editable={!isLoading}
             placeholderTextColor="#999"
           />
@@ -164,6 +162,7 @@ export default function ChatScreen() {
           >
             <Text style={styles.sendButtonText}>
               {isLoading ? '...' : 'Enviar'}
+
             </Text>
           </TouchableOpacity>
         </View>
@@ -207,7 +206,7 @@ const styles = StyleSheet.create({
   },
   userBubble: {
     alignSelf: 'flex-end',
-    backgroundColor: '#465575',
+    backgroundColor: '#f7e223',
     borderBottomRightRadius: 5,
   },
   botBubble: {
@@ -215,7 +214,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderBottomLeftRadius: 5,
   },
-  messageText: {
+  MessageText: {
     fontSize: 16,
     color: '#000',
   },
@@ -240,7 +239,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   sendButton: {
-    backgroundColor: '#465575',
+    backgroundColor: '#5497f0',
     paddingVertical: 12,
     paddingHorizontal: 20,
     borderRadius: 25,
