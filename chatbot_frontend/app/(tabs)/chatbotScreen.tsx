@@ -180,7 +180,6 @@ export default function ChatScreen() {
             value={inputText}
             onChangeText={setInputText}
             onSubmitEditing={handleSend}
-            multiline
             editable={!isLoading && !!userPhoneNumber}
             placeholderTextColor="#999"
           />
@@ -237,7 +236,7 @@ const styles = StyleSheet.create({
   },
   userBubble: {
     alignSelf: 'flex-end',
-    backgroundColor: '#465575',
+    backgroundColor: 'yellow',
     borderBottomRightRadius: 5,
   },
   botBubble: {

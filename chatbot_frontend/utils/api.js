@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-export const API_BASE_URL = 'http://172.20.10.3:5000'; // Certifique-se de usar o IP
+export const API_BASE_URL = 'http://172.20.10.3:5000';
 
 export const sendMessage = async (messageData) => {
   try {
@@ -9,7 +9,7 @@ export const sendMessage = async (messageData) => {
         'Content-Type': 'application/json',
       },
       timeout: 8000,
-    });
+    });   
     return response.data;
   } catch (error) {
     console.error('Erro na requisição:', {

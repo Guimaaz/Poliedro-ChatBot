@@ -5,6 +5,8 @@ from server.prompts import *
 from server.cardapio import itensCardapio
 import hashlib
 
+DATABASE_NAME = "chatbot.db"
+
 def hash_senha(senha):
     return hashlib.sha256(senha.encode()).hexdigest()
 
@@ -12,7 +14,7 @@ def verificar_senha(senha_digitada, senha_hash):
     return hash_senha(senha_digitada) == senha_hash
 
 def CreateDatabase():
-    conexao = sqlite3.connect("chatbot.db")
+    conexao = sqlite3.connect(DATABASE_NAME)
     cursor = conexao.cursor()
 
     cursor.execute('''
@@ -26,7 +28,7 @@ def CreateDatabase():
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS cardapios (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    pedido TEXT NOT NULL,
+    pedido TEXT NOT NULL UNIQUE,
     preco DECIMAL(10, 2) NOT NULL
 )
 ''')
@@ -44,6 +46,13 @@ def CreateDatabase():
 )
 ''')
 
+    # Inserir itens do cardápio se não existirem
+    for pedido, preco in itensCardapio:
+        try:
+            cursor.execute("INSERT INTO cardapios (pedido, preco) VALUES (?, ?)", (pedido, preco))
+        except sqlite3.IntegrityError:
+            pass # Item já existe
+
     # usuários teste chumbados
     numero_teste = "(11) 99999-1111"
     numero_teste2 = "(11) 97430-6792"
@@ -51,7 +60,6 @@ def CreateDatabase():
     senha_teste_plana2 = "Nhe45657"
     senha_teste_hash = hash_senha(senha_teste_plana)
     senha_teste_hash2 = hash_senha(senha_teste_plana2)
-
 
     try:
         print(f"Usuário de teste inserido: {numero_teste} com senha '{senha_teste_plana}' (hash: {senha_teste_hash})")
@@ -61,6 +69,7 @@ def CreateDatabase():
     except sqlite3.IntegrityError:
         print(f"Usuário de teste com número {numero_teste} já existe.")
 
+    conexao.commit()
     conexao.close()
 
 def validar_numero(numero_cliente):
@@ -71,7 +80,7 @@ def registrar_cliente(numero_cliente, senha):
     if not validar_numero(numero_cliente):
         return "Número de telefone inválido! Use o formato (XX) XXXXX-XXXX."
 
-    conexao = sqlite3.connect("chatbot.db")
+    conexao = sqlite3.connect(DATABASE_NAME)
     cursor = conexao.cursor()
 
     try:
@@ -84,7 +93,7 @@ def registrar_cliente(numero_cliente, senha):
         conexao.close()
 
 def autenticar_cliente(numero_cliente, senha):
-    conexao = sqlite3.connect("chatbot.db")
+    conexao = sqlite3.connect(DATABASE_NAME)
     cursor = conexao.cursor()
     print(f"Tentando autenticar cliente: {numero_cliente}")
     cursor.execute("SELECT senha FROM clientes WHERE numero_cliente = ?", (numero_cliente,))
@@ -102,11 +111,7 @@ def autenticar_cliente(numero_cliente, senha):
     return False
 
 def PedidosArmazenados(numero_cliente, pedido):
-    if not validar_numero(numero_cliente):
-        print("Número inválido! Use o formato (XX) XXXXX-XXXX.")
-        return
-
-    conexao = sqlite3.connect("chatbot.db")
+    conexao = sqlite3.connect(DATABASE_NAME)
     cursor = conexao.cursor()
 
     cursor.execute("SELECT id FROM clientes WHERE numero_cliente = ?", (numero_cliente,))
@@ -121,38 +126,41 @@ def PedidosArmazenados(numero_cliente, pedido):
 
     if not item:
         for p, preco in itensCardapio:
-            if p == pedido:
-                cursor.execute("INSERT INTO cardapios (pedido, preco) VALUES (?, ?)", (pedido, preco))
+            if p.lower() == pedido.lower():
+                cursor.execute("INSERT OR IGNORE INTO cardapios (pedido, preco) VALUES (?, ?)", (p, preco))
                 conexao.commit()
-                cursor.execute("SELECT id, pedido, preco FROM cardapios WHERE pedido = ?", (pedido,))
+                cursor.execute("SELECT id, pedido, preco FROM cardapios WHERE pedido = ?", (p,))
                 item = cursor.fetchone()
                 break
+        if not item:
+            conexao.close()
+            return "Item não encontrado no cardápio."
 
     cursor.execute("INSERT INTO pedidos (numero_cliente, item, item_id, preco) VALUES (?, ?, ?, ?)",
-                   (numero_cliente, item[1], item[0], item[2]))
+                    (numero_cliente, item[1], item[0], item[2]))
 
     conexao.commit()
     conexao.close()
     return "Pedido registrado com sucesso!"
 
-def removerPedidos(numero_cliente, pedidos):
+def removerPedidos(numero_cliente, pedido):
     try:
-        conn = sqlite3.connect('chatbot.db')
+        conn = sqlite3.connect(DATABASE_NAME)
         cursor = conn.cursor()
 
         cursor.execute("SELECT * FROM pedidos WHERE numero_cliente = ? AND item = ?",
-                      (numero_cliente, pedidos))
+                       (numero_cliente, pedido))
         if not cursor.fetchone():
-            return f"Pedido '{pedidos}' não encontrado para este número."
+            return f"Pedido '{pedido}' não encontrado para este número."
 
         cursor.execute("DELETE FROM pedidos WHERE numero_cliente = ? AND item = ?",
-                      (numero_cliente, pedidos))
+                       (numero_cliente, pedido))
         conn.commit()
 
         if cursor.rowcount > 0:
-            return f"Pedido '{pedidos}' removido com sucesso!"
+            return f"Pedido '{pedido}' removido com sucesso!"
         else:
-            return f"Não foi possível remover o pedido '{pedidos}'."
+            return f"Não foi possível remover o pedido '{pedido}'."
 
     except sqlite3.Error as e:
         return f"Erro no banco de dados: {str(e)}"
@@ -161,7 +169,7 @@ def removerPedidos(numero_cliente, pedidos):
             conn.close()
 
 def BuscarPedidos(numero_cliente):
-    conexao = sqlite3.connect("chatbot.db")
+    conexao = sqlite3.connect(DATABASE_NAME)
     cursor = conexao.cursor()
 
     cursor.execute("SELECT id FROM clientes WHERE numero_cliente = ?", (numero_cliente,))
@@ -172,9 +180,9 @@ def BuscarPedidos(numero_cliente):
         return "Cliente não encontrado. Por favor, faça login novamente."
 
     cursor.execute('''
-        SELECT item, item_id, preco, datetime(data, '-3 hours')
-        FROM pedidos
-        WHERE numero_cliente = ?
+        SELECT p.item, p.item_id, p.preco, datetime(p.data, '-3 hours')
+        FROM pedidos p
+        WHERE p.numero_cliente = ?
     ''', (numero_cliente,))
 
     pedidos = cursor.fetchall()
@@ -188,13 +196,18 @@ def BuscarPedidos(numero_cliente):
 def VerificarItensCardapio(pedido):
     pedido = pedido.lower()
 
-    if pedido in [item[0] for item in itensCardapio]:
-        return pedido, True
+    for item in itensCardapio:
+        if item[0].lower() == pedido:
+            return item[0], True
 
-    prato_sugerido = difflib.get_close_matches(pedido, [item[0] for item in itensCardapio], n=1, cutoff=0.6)
+    prato_sugerido = difflib.get_close_matches(pedido, [item[0].lower() for item in itensCardapio], n=1, cutoff=0.6)
     if prato_sugerido:
-        return prato_sugerido[0], False
+        # Retorna o nome original do cardápio
+        for item in itensCardapio:
+            if item[0].lower() == prato_sugerido[0]:
+                return item[0], False
 
     return None, False
 
+# Garante que o banco e o cardápio sejam criados na inicialização do módulo
 CreateDatabase()

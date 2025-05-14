@@ -4,7 +4,6 @@ import google.generativeai as genai
 from server.prompts import *
 from server.BancoPedidos import (
     CreateDatabase,
-    validar_numero,
     PedidosArmazenados,
     BuscarPedidos,
     removerPedidos,
@@ -26,6 +25,9 @@ genai.configure(api_key=os.getenv("API_KEY"))
 model = genai.GenerativeModel("gemini-1.5-flash")
 
 CreateDatabase()
+
+# Dicionário para manter o estado da conversa por ID de conversa
+conversa_estado = {}
 
 def extrair_intencao(texto):
     match = re.search(r'INTENÇÃO:\s*(FAZER_PEDIDO|CONSULTAR_PEDIDO|REMOVER_PEDIDO|VER_CARDAPIO|OUTRA)', texto, re.IGNORECASE)
@@ -70,7 +72,7 @@ def login():
 
     if autenticar_cliente(numero_cliente, senha):
         print(f"Login bem-sucedido para: {numero_cliente}")
-        return jsonify({'success': True, 'message': 'Login realizado com sucesso!'}), 200
+        return jsonify({'success': True, 'message': 'Login realizado com sucesso!', 'numero_cliente': numero_cliente}), 200
     else:
         print(f"Falha no login para: {numero_cliente}")
         return jsonify({'success': False, 'message': 'Credenciais inválidas.'}), 401
@@ -80,53 +82,75 @@ def chat():
     data = request.json
     user_input = data.get('mensagem', '').strip()
     numero_cliente_logado = data.get('numero_cliente')
-    esperando = data.get('esperando')
-    item_sugerido = data.get('item_sugerido')
-    pedidos_atuais = data.get('pedidos_atuais')
+    id_conversa = data.get('id_conversa', 'default')
 
     if not numero_cliente_logado:
-        return jsonify({'resposta': 'Você precisa estar logado para usar o chatbot para pedidos.', 'error': True}), 401
+        return jsonify({'resposta': 'Você precisa estar logado para usar o chatbot para pedidos.', 'error': True, 'id_conversa': id_conversa}), 401
+
+    # Inicializa o estado da conversa se não existir
+    if id_conversa not in conversa_estado:
+        conversa_estado[id_conversa] = {'esperando': None, 'item_sugerido': None, 'pedidos_atuais': None}
+
+    estado_conversa = conversa_estado[id_conversa]
+    esperando = estado_conversa['esperando']
+    item_sugerido = estado_conversa['item_sugerido']
+    pedidos_atuais = estado_conversa['pedidos_atuais']
 
     try:
         if esperando == 'pedido':
-            itemSugerido, exato = VerificarItensCardapio(user_input)
+            itemSugerido_verificado, exato = VerificarItensCardapio(user_input)
 
-            if not itemSugerido:
+            if not itemSugerido_verificado:
+                estado_conversa['esperando'] = 'pedido'
                 return jsonify({
                     'resposta': "Desculpa, não trabalhamos com esse item. Por favor, peça algo presente em nosso cardápio.",
-                    'esperando': 'pedido'
+                    'esperando': 'pedido',
+                    'id_conversa': id_conversa
                 })
 
             if not exato:
+                estado_conversa['esperando'] = 'confirmacao'
+                estado_conversa['item_sugerido'] = itemSugerido_verificado
                 return jsonify({
-                    'resposta': f"Você quis dizer '{itemSugerido}'? (sim/não)",
+                    'resposta': f"Você quis dizer '{itemSugerido_verificado}'? (sim/não)",
                     'esperando': 'confirmacao',
-                    'item_sugerido': itemSugerido,
-                    'pedido': user_input
+                    'item_sugerido': itemSugerido_verificado,
+                    'id_conversa': id_conversa
                 })
 
             resultado_pedido = PedidosArmazenados(numero_cliente_logado, user_input)
+            estado_conversa['esperando'] = None
+            estado_conversa['item_sugerido'] = None
             return jsonify({
-                'resposta': f"{resultado_pedido}"
+                'resposta': f"{resultado_pedido}",
+                'id_conversa': id_conversa
             })
 
         elif esperando == 'confirmacao':
             if user_input.lower() in ['sim', 's']:
                 resultado_confirmacao = PedidosArmazenados(numero_cliente_logado, item_sugerido)
+                estado_conversa['esperando'] = None
+                estado_conversa['item_sugerido'] = None
                 return jsonify({
-                    'resposta': f"{resultado_confirmacao}"
+                    'resposta': f"{resultado_confirmacao}",
+                    'id_conversa': id_conversa
                 })
             else:
+                estado_conversa['esperando'] = 'pedido'
+                estado_conversa['item_sugerido'] = None
                 return jsonify({
                     'resposta': "Entendido. Por favor, especifique novamente o pedido.",
-                    'esperando': 'pedido'
+                    'esperando': 'pedido',
+                    'id_conversa': id_conversa
                 })
 
         elif esperando == 'pedido_remocao':
             pedido_remover = user_input.strip()
             resultado_remocao = removerPedidos(numero_cliente_logado, pedido_remover)
+            estado_conversa['esperando'] = None
             return jsonify({
-                'resposta': resultado_remocao
+                'resposta': resultado_remocao,
+                'id_conversa': id_conversa
             })
 
         else:
@@ -135,31 +159,38 @@ def chat():
             intencao = extrair_intencao(bot_reply)
 
             if not intencao:
-                return jsonify({'resposta': bot_reply})
+                return jsonify({'resposta': bot_reply, 'id_conversa': id_conversa})
 
             if intencao == "FAZER_PEDIDO":
-                resposta_pedido = "Certo! Qual será seu pedido?"
+                estado_conversa['esperando'] = 'pedido'
                 return jsonify({
-                    'resposta': resposta_pedido,
-                    'esperando': 'pedido'
+                    'resposta': "Certo! Qual será seu pedido?",
+                    'esperando': 'pedido',
+                    'id_conversa': id_conversa
                 })
 
             elif intencao == "CONSULTAR_PEDIDO":
                 resultado = BuscarPedidos(numero_cliente_logado)
+                estado_conversa['esperando'] = None
                 return jsonify({
-                    'resposta': resultado
+                    'resposta': resultado,
+                    'id_conversa': id_conversa
                 })
 
             elif intencao == "REMOVER_PEDIDO":
                 pedidos_atuais_texto = BuscarPedidos(numero_cliente_logado)
+                estado_conversa['esperando'] = 'pedido_remocao'
+                estado_conversa['pedidos_atuais'] = pedidos_atuais_texto
                 if "nenhum pedido" in pedidos_atuais_texto.lower():
                     return jsonify({
-                        'resposta': "Não encontramos pedidos ativos para este número."
+                        'resposta': "Não encontramos pedidos ativos para este número.",
+                        'id_conversa': id_conversa
                     })
                 return jsonify({
                     'resposta': f"Aqui estão seus pedidos atuais:\n{pedidos_atuais_texto}\n\nPor favor, digite o NOME EXATO do pedido que deseja remover:",
                     'esperando': 'pedido_remocao',
-                    'pedidos_atuais': pedidos_atuais_texto
+                    'pedidos_atuais': pedidos_atuais_texto,
+                    'id_conversa': id_conversa
                 })
             elif intencao == "VER_CARDAPIO":
                 cardapio_texto = """Olá! 😊
@@ -205,15 +236,17 @@ Saladas
 - Salada Caprese - Tomate, muçarela de búfala, manjericão e azeite - 19.00
 
 Qual categoria te interessa mais hoje? 😋"""
-                return jsonify({'resposta': cardapio_texto})
+                estado_conversa['esperando'] = None
+                return jsonify({'resposta': cardapio_texto, 'id_conversa': id_conversa})
 
-            return jsonify({'resposta': bot_reply})
+            return jsonify({'resposta': bot_reply, 'id_conversa': id_conversa})
 
     except Exception as e:
         print(f"Erro na API: {str(e)}")
         return jsonify({
             'resposta': "Desculpe, ocorreu um erro. Por favor, tente novamente.",
-            'error': True
+            'error': True,
+            'id_conversa': id_conversa
         })
 
 @app.route('/teste', methods=['GET'])
