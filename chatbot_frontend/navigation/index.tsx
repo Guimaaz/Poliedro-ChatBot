@@ -19,10 +19,24 @@ export type ChatScreenNavigationProp = NativeStackNavigationProp<RootStackParamL
 const AppNavigator = () => {
   return (
     <NavigationContainer>
-      <Stack.Navigator initialRouteName="LoginScreen">
-        <Stack.Screen name="LoginScreen" component={LoginScreen} />
-        <Stack.Screen name="ChatScreen" component={ChatScreen} />
-        {/* Adicione outras telas aqui */}
+      <Stack.Navigator
+        initialRouteName="LoginScreen"
+        screenOptions={{
+          headerStyle: {
+            backgroundColor: '#4B3D3D',
+          },
+          headerTintColor: '#fff',
+          headerTitleStyle: {
+            fontWeight: 'bold',
+            fontSize: 20,
+          },
+          contentStyle: {
+            backgroundColor: '#e0e0e0',
+          },
+        }}
+      >
+        <Stack.Screen name="LoginScreen" component={LoginScreen} options={{ title: 'Área de Login' }} />
+        <Stack.Screen name="ChatScreen" component={ChatScreen} options={{ title: 'Popoli Chat Poliedro' }} />
       </Stack.Navigator>
     </NavigationContainer>
   );

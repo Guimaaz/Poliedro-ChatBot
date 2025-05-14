@@ -13,8 +13,8 @@ export default function LoginScreen() {
   const [senha, setSenha] = useState('');
   const [loading, setLoading] = useState(false);
   const { width } = useWindowDimensions();
-  const inputWidth = width < 600 ? width * 0.7 : 700;
-  const containerWidth = width < 600 ? width * 0.9 : 1000;
+  const inputWidth = width < 600 ? width * 0.7 : 300;
+  const containerWidth = width < 600 ? width * 0.9 : 500;
   const navigation = useNavigation<LoginScreenNavigationProp>();
 
   const handleLogin = async () => {
