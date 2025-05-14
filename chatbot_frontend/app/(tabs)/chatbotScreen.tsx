@@ -22,7 +22,7 @@ type ChatbotScreenNavigationProp = NativeStackNavigationProp<RootStackParamList,
 
 export default function ChatScreen() {
   const { width } = useWindowDimensions();
-  const containerWidth = width < 600 ? width * 0.9 : 1000;
+  const containerWidth = width < 600 ? width * 0.9 : 500;
   const flatListRef = useRef<FlatList>(null);
   const navigation = useNavigation<ChatbotScreenNavigationProp>();
 
