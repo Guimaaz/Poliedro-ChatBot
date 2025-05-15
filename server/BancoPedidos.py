@@ -56,15 +56,19 @@ def CreateDatabase():
     # usuários teste chumbados
     numero_teste = "(11) 99999-1111"
     numero_teste2 = "(11) 97430-6792"
+    numero_teste3 = "(11) 98765-4321"
     senha_teste_plana = "senha123"
     senha_teste_plana2 = "Nhe45657"
+    senha_teste_plana3 = "senha123"
     senha_teste_hash = hash_senha(senha_teste_plana)
     senha_teste_hash2 = hash_senha(senha_teste_plana2)
+    senha_teste_hash3 = hash_senha(senha_teste_plana3)
 
     try:
       
         cursor.execute("INSERT INTO clientes (numero_cliente, senha) VALUES (?, ?)", (numero_teste2, senha_teste_hash2))
         cursor.execute("INSERT INTO clientes (numero_cliente, senha) VALUES (?, ?)", (numero_teste, senha_teste_hash))
+        cursor.execute("INSERT INTO clientes (numero_cliente, senha) VALUES (?, ?)", (numero_teste3, senha_teste_hash3))
         conexao.commit()
     except sqlite3.IntegrityError:
         print(f"Usuário de teste com número {numero_teste} já existe.")
