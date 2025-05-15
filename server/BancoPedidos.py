@@ -62,7 +62,7 @@ def CreateDatabase():
     senha_teste_hash2 = hash_senha(senha_teste_plana2)
 
     try:
-        print(f"Usuário de teste inserido: {numero_teste} com senha '{senha_teste_plana}' (hash: {senha_teste_hash})")
+      
         cursor.execute("INSERT INTO clientes (numero_cliente, senha) VALUES (?, ?)", (numero_teste2, senha_teste_hash2))
         cursor.execute("INSERT INTO clientes (numero_cliente, senha) VALUES (?, ?)", (numero_teste, senha_teste_hash))
         conexao.commit()

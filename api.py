@@ -101,10 +101,9 @@ def chat():
             itemSugerido_verificado, exato = VerificarItensCardapio(user_input)
 
             if not itemSugerido_verificado:
-                estado_conversa['esperando'] = 'pedido'
+                estado_conversa['esperando'] = None # Sai do estado de 'pedido'
                 return jsonify({
-                    'resposta': "Desculpa, não trabalhamos com esse item. Por favor, peça algo presente em nosso cardápio.",
-                    'esperando': 'pedido',
+                    'resposta': "Não entendi o que você gostaria de pedir. Se quiser fazer um pedido, diga 'quero fazer um pedido'.",
                     'id_conversa': id_conversa
                 })
 
@@ -136,11 +135,10 @@ def chat():
                     'id_conversa': id_conversa
                 })
             else:
-                estado_conversa['esperando'] = 'pedido'
+                estado_conversa['esperando'] = None # Sai do estado de 'confirmacao'
                 estado_conversa['item_sugerido'] = None
                 return jsonify({
-                    'resposta': "Entendido. Por favor, especifique novamente o pedido.",
-                    'esperando': 'pedido',
+                    'resposta': "Entendido. Se quiser fazer um pedido, diga 'quero fazer um pedido'.",
                     'id_conversa': id_conversa
                 })
 
