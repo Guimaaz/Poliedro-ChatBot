@@ -70,7 +70,7 @@ export default function LoginScreen() {
           <TextInput
             style={[styles.input, { width: inputWidth }]}
             placeholder="Número de telefone"
-            keyboardType="phone-pad"
+            keyboardType="numbers-and-punctuation"
             value={telefone}
             onChangeText={setTelefone}
           />

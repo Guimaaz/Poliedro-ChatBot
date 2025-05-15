@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import { View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet, SafeAreaView, useWindowDimensions, Keyboard, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet, SafeAreaView, useWindowDimensions, Keyboard, Alert,KeyboardAvoidingView, Platform } from 'react-native';
 import { sendMessage } from '../../utils/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
@@ -173,7 +173,7 @@ export default function ChatScreen() {
           onLayout={scrollToBottom}
         />
 
-        <View style={styles.inputContainer}>
+        <KeyboardAvoidingView behavior = {'padding'} keyboardVerticalOffset={108} style={styles.inputContainer}>
           <TextInput
             style={styles.input}
             placeholder={inputPlaceholder}
@@ -195,7 +195,7 @@ export default function ChatScreen() {
           {!userPhoneNumber && (
             <Text style={styles.authWarning}>Por favor, faça login para interagir.</Text>
           )}
-        </View>
+        </KeyboardAvoidingView>
       </View>
     </SafeAreaView>
   );
@@ -207,6 +207,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#4B3D3D',
   },
   container: {
+  
     flex: 1,
     backgroundColor: '#bfb493',
     borderRadius: 30,
@@ -255,6 +256,8 @@ const styles = StyleSheet.create({
     borderColor: '#ddd',
     backgroundColor: '#fff',
     alignItems: 'center',
+    
+    
   },
   input: {
     flex: 1,
@@ -267,6 +270,8 @@ const styles = StyleSheet.create({
     marginRight: 10,
     paddingVertical: 12,
     backgroundColor: '#fff',
+    margin : 10
+    
   },
   sendButton: {
     backgroundColor: '#465575',
