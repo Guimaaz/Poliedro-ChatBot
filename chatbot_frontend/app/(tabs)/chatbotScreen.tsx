@@ -179,12 +179,7 @@ export default function ChatScreen() {
             value={inputText}
             onChangeText={setInputText}
             onSubmitEditing={handleSend}
-<<<<<<< HEAD
-            
-            editable={!isLoading}
-=======
             editable={!isLoading && !!userPhoneNumber}
->>>>>>> 6705df68af461e8c9895021925ce4379ab68c5cb
             placeholderTextColor="#999"
           />
           <TouchableOpacity
@@ -241,11 +236,7 @@ const styles = StyleSheet.create({
   },
   userBubble: {
     alignSelf: 'flex-end',
-<<<<<<< HEAD
-    backgroundColor: '#f7e223',
-=======
     backgroundColor: 'yellow',
->>>>>>> 6705df68af461e8c9895021925ce4379ab68c5cb
     borderBottomRightRadius: 5,
   },
   botBubble: {
