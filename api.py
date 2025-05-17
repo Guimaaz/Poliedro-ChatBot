@@ -100,7 +100,6 @@ def chat():
     if not numero_cliente_logado:
         return jsonify({'resposta': 'Você precisa estar logado para usar o chatbot para pedidos.', 'error': True, 'id_conversa': id_conversa}), 401
 
-    # Inicializa o estado da conversa se não existir
     if id_conversa not in conversa_estado:
         conversa_estado[id_conversa] = {'esperando': None, 'itens_pedido': [], 'valor_total': 0.0, 'item_sugerido': None, 'descricao_sugerida': None, 'preco_sugerido': 0.0, 'pedidos_atuais': None, 'pedido_sessao_id': None}
 
@@ -306,7 +305,7 @@ def chat():
                     'id_conversa': id_conversa
                 })
 
-        elif esperando == 'pedido_remocao': # Mantive essa parte para remover pedidos antigos (histórico)
+        elif esperando == 'pedido_remocao': 
             pedido_remover = user_input.strip()
             resultado_remocao = removerPedidos(numero_cliente_logado, pedido_remover)
             estado_conversa['esperando'] = None
@@ -327,7 +326,7 @@ def chat():
                 estado_conversa['esperando'] = 'pedido'
                 estado_conversa['itens_pedido'] = []
                 estado_conversa['valor_total'] = 0.0
-                estado_conversa['pedido_sessao_id'] = str(uuid.uuid4()) # Gera um novo ID de sessão
+                estado_conversa['pedido_sessao_id'] = str(uuid.uuid4()) # um novo id por conversa
                 return jsonify({
                     'resposta': "Certo! Qual será seu primeiro item?",
                     'esperando': 'pedido',
@@ -340,7 +339,7 @@ def chat():
                     'resposta': resultado,
                     'id_conversa': id_conversa
                 })
-            elif intencao == "REMOVER_PEDIDO": # Intenção antiga para remover pedidos históricos
+            elif intencao == "REMOVER_PEDIDO": 
                 pedidos_atuais_texto = BuscarPedidos(numero_cliente_logado)
                 estado_conversa['esperando'] = 'pedido_remocao'
                 estado_conversa['pedidos_atuais'] = pedidos_atuais_texto
@@ -389,7 +388,7 @@ def admin_listar_pedidos():
 
 @app.route('/admin/pedidos/cliente/<numero_cliente>/finalizar', methods=['POST'])
 def finalizar_pedidos_cliente_route(numero_cliente):
-    resultado = finalizar_pedidos_cliente(numero_cliente) # Chama a função do banco
+    resultado = finalizar_pedidos_cliente(numero_cliente) 
     return jsonify(resultado), 200
 
 @app.route('/admin/pedidos/<pedido_id>/finalizar', methods=['POST'])
@@ -418,7 +417,7 @@ def admin_adicionar_cardapio_item():
     if not pedido or preco is None:
         return jsonify({'error': 'Nome do pedido e preço são obrigatórios.'}), 400
 
-    conexao = sqlite3.connect("chatbot.db") # Usando diretamente o nome do banco aqui
+    conexao = sqlite3.connect("chatbot.db")
     cursor = conexao.cursor()
     try:
         cursor.execute("INSERT INTO cardapios (pedido, preco, categoria, descricao) VALUES (?, ?, ?, ?)", (pedido, preco, categoria, descricao))
