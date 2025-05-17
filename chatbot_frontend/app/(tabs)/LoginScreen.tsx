@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'; // Importe useEffect
+import React, { useState, useEffect, useRef } from 'react'; // Importe useRef
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, SafeAreaView, useWindowDimensions, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
@@ -16,6 +16,7 @@ export default function LoginScreen() {
   const inputWidth = width < 600 ? width * 0.7 : 300;
   const containerWidth = width < 600 ? width * 0.9 : 500;
   const navigation = useNavigation<LoginScreenNavigationProp>();
+  const senhaInputRef = useRef<TextInput>(null); // Cria uma ref para o input de senha
 
   const handleLogin = async () => {
     if (!telefone || !senha) {
@@ -97,14 +98,19 @@ export default function LoginScreen() {
             keyboardType="numbers-and-punctuation"
             value={telefone}
             onChangeText={setTelefone}
+            returnKeyType="next"
+            onSubmitEditing={() => senhaInputRef.current?.focus()} // Move o foco para a senha ao pressionar Enter
           />
 
           <TextInput
+            ref={senhaInputRef} // Define a ref para este TextInput
             style={[styles.input, { width: inputWidth }]}
             placeholder="Senha"
             secureTextEntry
             value={senha}
             onChangeText={setSenha}
+            returnKeyType="done"
+            onSubmitEditing={handleLogin} // Chama handleLogin ao pressionar Enter
           />
 
           <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={loadingLogin}>
