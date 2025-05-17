@@ -1,4 +1,3 @@
-// AdminMenuList.tsx
 import React, { useState } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, Alert, TextInput } from 'react-native';
 import { API_BASE_URL } from '../../utils/api';

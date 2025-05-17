@@ -1,4 +1,3 @@
-// AdminHomeScreen.tsx
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, ScrollView } from 'react-native';
 import { API_BASE_URL } from '../../utils/api';
