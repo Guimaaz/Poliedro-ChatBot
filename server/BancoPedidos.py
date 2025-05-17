@@ -1,4 +1,3 @@
-# server/BancoPedidos.py (continuação)
 import sqlite3
 import re
 import difflib
@@ -49,12 +48,12 @@ def CreateDatabase():
     )
     ''')
 
-    # Inserir itens do cardápio se não existirem
+    
     for pedido, preco in itensCardapio:
         try:
             cursor.execute("INSERT INTO cardapios (pedido, preco) VALUES (?, ?)", (pedido, preco))
         except sqlite3.IntegrityError:
-            pass # Item já existe
+            pass 
 
     numero_admin = "(11) 97430-6793"
     senha_admin_hash = hash_senha("admin")
@@ -215,7 +214,6 @@ def VerificarItensCardapio(pedido):
 
     prato_sugerido = difflib.get_close_matches(pedido, [item[0].lower() for item in itensCardapio], n=1, cutoff=0.6)
     if prato_sugerido:
-        # Retorna o nome original do cardápio
         for item in itensCardapio:
             if item[0].lower() == prato_sugerido[0]:
                 return item[0], False
@@ -314,5 +312,4 @@ def buscar_clientes_admin():
     conexao.close()
     return [{"id": c[0], "numero_cliente": c[1]} for c in clientes]
 
-# Garante que o banco e o cardápio sejam criados na inicialização do módulo
 CreateDatabase()
