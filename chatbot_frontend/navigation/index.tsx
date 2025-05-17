@@ -3,18 +3,20 @@ import { createNativeStackNavigator, NativeStackNavigationProp } from '@react-na
 import { NavigationContainer } from '@react-navigation/native';
 import LoginScreen from '../app/(tabs)/LoginScreen';
 import ChatScreen from '../app/(tabs)/chatbotScreen';
+import RegisterScreen from '../app/(tabs)/RegisterScreen'; 
 
 const Stack = createNativeStackNavigator();
 
 export type RootStackParamList = {
   LoginScreen: undefined;
   ChatScreen: undefined;
-  // Adicione outras telas e seus parâmetros aqui
+  RegisterScreen: undefined; 
 };
 
 export type RootStackNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 export type LoginScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'LoginScreen'>;
 export type ChatScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'ChatScreen'>;
+export type RegisterScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'RegisterScreen'>; 
 
 const AppNavigator = () => {
   return (
@@ -36,6 +38,7 @@ const AppNavigator = () => {
         }}
       >
         <Stack.Screen name="LoginScreen" component={LoginScreen} options={{ title: 'Área de Login' }} />
+        <Stack.Screen name="RegisterScreen" component={RegisterScreen} options={{ title: 'Área de Cadastro' }} />
         <Stack.Screen name="ChatScreen" component={ChatScreen} options={{ title: 'Popoli Chat Poliedro' }} />
       </Stack.Navigator>
     </NavigationContainer>
