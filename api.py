@@ -3,7 +3,6 @@ from flask_cors import CORS
 import google.generativeai as genai
 import re
 import os
-import sqlite3
 from dotenv import load_dotenv
 from pathlib import Path
 from server.prompts import prompt_completo
@@ -15,7 +14,6 @@ from server.BancoPedidos import (
     VerificarItensCardapio,
     registrar_cliente,
     autenticar_cliente,
-    AdicionarItemPedido,
     buscar_pedidos_admin,
     finalizar_pedido_admin,
     reabrir_pedido_admin,
@@ -35,7 +33,7 @@ model = genai.GenerativeModel("gemini-1.5-flash")
 
 CreateDatabase()
 
-# Dicionário para manter o estado da conversa por ID de conversa
+
 conversa_estado = {}
 
 def extrair_intencao(texto):
