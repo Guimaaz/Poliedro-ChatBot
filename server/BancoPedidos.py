@@ -3,6 +3,7 @@ import re
 import difflib
 import hashlib
 from server.cardapio import itensCardapio
+from flask import jsonify
 
 DATABASE_NAME = "chatbot.db"
 
@@ -25,8 +26,7 @@ def CreateDatabase():
     )
     ''')
 
-    cursor.execute('''
-    CREATE TABLE IF NOT EXISTS cardapios (
+    cursor.execute('''CREATE TABLE IF NOT EXISTS cardapios (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     pedido TEXT NOT NULL UNIQUE,
     preco DECIMAL(10, 2) NOT NULL,
@@ -122,7 +122,7 @@ def autenticar_cliente(numero_cliente, senha):
         return senha_correta, is_admin
     return False, 0
 
-def PedidosArmazenados(numero_cliente, pedido):
+def PedidosArmazenados(numero_cliente, itens_pedido, valor_total):
     conexao = sqlite3.connect(DATABASE_NAME)
     cursor = conexao.cursor()
 
@@ -133,15 +133,27 @@ def PedidosArmazenados(numero_cliente, pedido):
         conexao.close()
         return "Cliente não encontrado. Por favor, faça login novamente."
 
-    cursor.execute("SELECT id, pedido, preco FROM cardapios WHERE pedido = ?", (pedido,))
-    item = cursor.fetchone()
+    pedido_id_principal = None  # Para armazenar o ID do pedido principal
 
-    if not item:
-        conexao.close()
-        return "Item não encontrado no cardápio."
+    for item_info in itens_pedido:
+        pedido_nome = item_info['nome']
+        preco_item = item_info['preco']
 
-    cursor.execute("INSERT INTO pedidos (numero_cliente, item, item_id, preco) VALUES (?, ?, ?, ?)",
-                    (numero_cliente, item[1], item[0], item[2]))
+        cursor.execute("SELECT id, pedido FROM cardapios WHERE pedido = ?", (pedido_nome,))
+        item_cardapio = cursor.fetchone()
+
+        if item_cardapio:
+            item_id = item_cardapio[0]
+            cursor.execute(
+                "INSERT INTO pedidos (numero_cliente, item, item_id, preco) VALUES (?, ?, ?, ?)",
+                (numero_cliente, pedido_nome, item_id, preco_item)
+            )
+            if pedido_id_principal is None:
+                pedido_id_principal = cursor.lastrowid  # Captura o ID do primeiro item inserido (pode ser útil para referência futura)
+        else:
+            conexao.rollback()
+            conexao.close()
+            return f"Item '{pedido_nome}' não encontrado no cardápio."
 
     conexao.commit()
     conexao.close()
@@ -154,12 +166,12 @@ def removerPedidos(numero_cliente, pedido):
         cursor = conn.cursor()
 
         cursor.execute("SELECT * FROM pedidos WHERE numero_cliente = ? AND item = ?",
-                       (numero_cliente, pedido))
+                        (numero_cliente, pedido))
         if not cursor.fetchone():
             return f"Pedido '{pedido}' não encontrado para este número."
 
         cursor.execute("DELETE FROM pedidos WHERE numero_cliente = ? AND item = ?",
-                       (numero_cliente, pedido))
+                        (numero_cliente, pedido))
         conn.commit()
 
         if cursor.rowcount > 0:
@@ -246,12 +258,36 @@ def buscar_pedidos_admin():
     conexao = sqlite3.connect(DATABASE_NAME)
     cursor = conexao.cursor()
     cursor.execute('''
-        SELECT p.id, p.numero_cliente, p.item, p.preco, p.finalizado
-        FROM pedidos p
+        SELECT numero_cliente, GROUP_CONCAT(item || ' (R$' || preco || ')', '\n- ') AS itens, SUM(preco), MIN(datetime(data, '-3 hours')), MAX(datetime(data, '-3 hours'))
+        FROM pedidos
+        WHERE finalizado = 0
+        GROUP BY numero_cliente
+        ORDER BY MIN(data) DESC
     ''')
-    pedidos = cursor.fetchall()
+    pedidos_pendentes = cursor.fetchall()
+
+    cursor.execute('''
+        SELECT numero_cliente, GROUP_CONCAT(item || ' (R$' || preco || ')', '\n- ') AS itens, SUM(preco), MIN(datetime(data, '-3 hours')), MAX(datetime(data, '-3 hours'))
+        FROM pedidos
+        WHERE finalizado = 1
+        GROUP BY numero_cliente
+        ORDER BY MAX(data) DESC
+    ''')
+    pedidos_finalizados = cursor.fetchall()
+
     conexao.close()
-    return [{"id": p[0], "numero_cliente": p[1], "item": p[2], "preco": p[3], "finalizado": bool(p[4])} for p in pedidos]
+
+    pedidos_pendentes_formatados = [
+        {"cliente": p[0], "itens": p[1], "preco_total": float(p[2]), "data_inicio": p[3], "data_fim": p[4], "finalizado": False}
+        for p in pedidos_pendentes
+    ]
+
+    pedidos_finalizados_formatados = [
+        {"cliente": p[0], "itens": p[1], "preco_total": float(p[2]), "data_inicio": p[3], "data_fim": p[4], "finalizado": True}
+        for p in pedidos_finalizados
+    ]
+
+    return {"nao_finalizados": pedidos_pendentes_formatados, "finalizados": pedidos_finalizados_formatados}
 
 def finalizar_pedido_admin(pedido_id):
     conexao = sqlite3.connect(DATABASE_NAME)
@@ -268,6 +304,15 @@ def reabrir_pedido_admin(pedido_id):
     conexao.commit()
     conexao.close()
     return f"Pedido ID {pedido_id} reaberto."
+
+
+def finalizar_pedidos_cliente(numero_cliente):
+    conexao = sqlite3.connect(DATABASE_NAME)
+    cursor = conexao.cursor()
+    cursor.execute("UPDATE pedidos SET finalizado = 1 WHERE numero_cliente = ? AND finalizado = 0", (numero_cliente,))
+    conexao.commit()
+    conexao.close()
+    return {'message': f"Pedidos de {numero_cliente} finalizados com sucesso."}
 
 def buscar_cardapio_admin():
     conexao = sqlite3.connect(DATABASE_NAME)

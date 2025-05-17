@@ -3,6 +3,7 @@ from flask_cors import CORS
 import google.generativeai as genai
 import re
 import os
+import sqlite3
 from dotenv import load_dotenv
 from pathlib import Path
 from server.prompts import prompt_completo
@@ -10,6 +11,7 @@ from server.BancoPedidos import (
     CreateDatabase,
     PedidosArmazenados,
     BuscarPedidos,
+    finalizar_pedidos_cliente,
     removerPedidos,
     VerificarItensCardapio,
     registrar_cliente,
@@ -85,6 +87,7 @@ def login():
         print(f"Falha no login para: {numero_cliente}")
         return jsonify({'success': False, 'message': 'Credenciais inválidas.'}), 401
 
+
 @app.route('/chat', methods=['POST'])
 def chat():
     data = request.json
@@ -97,13 +100,15 @@ def chat():
 
     # Inicializa o estado da conversa se não existir
     if id_conversa not in conversa_estado:
-        conversa_estado[id_conversa] = {'esperando': None, 'itens_pedido': [], 'item_sugerido': None, 'descricao_sugerida': None, 'pedidos_atuais': None}
+        conversa_estado[id_conversa] = {'esperando': None, 'itens_pedido': [], 'valor_total': 0.0, 'item_sugerido': None, 'descricao_sugerida': None, 'preco_sugerido': 0.0, 'pedidos_atuais': None}
 
     estado_conversa = conversa_estado[id_conversa]
     esperando = estado_conversa['esperando']
     itens_pedido = estado_conversa['itens_pedido']
+    valor_total = estado_conversa['valor_total']
     item_sugerido = estado_conversa['item_sugerido']
     descricao_sugerida = estado_conversa['descricao_sugerida']
+    preco_sugerido = estado_conversa['preco_sugerido']
     pedidos_atuais = estado_conversa['pedidos_atuais']
 
     try:
@@ -131,23 +136,25 @@ def chat():
                     'id_conversa': id_conversa
                 })
 
-            estado_conversa['itens_pedido'].append(itemSugerido_verificado)
+            estado_conversa['itens_pedido'].append({'nome': itemSugerido_verificado, 'preco': preco_item})
+            estado_conversa['valor_total'] += preco_item
             estado_conversa['esperando'] = 'adicionar_mais'
             return jsonify({
-                'resposta': f"'{itemSugerido_verificado}' adicionado ao pedido. Deseja adicionar mais alguma coisa? (sim/não)",
+                'resposta': f"'{itemSugerido_verificado}' (R${preco_item:.2f}) adicionado ao pedido. Deseja adicionar mais alguma coisa? (sim/não)",
                 'esperando': 'adicionar_mais',
                 'id_conversa': id_conversa
             })
 
         elif esperando == 'confirmacao_pedido':
             if user_input.lower() in ['sim', 's']:
-                estado_conversa['itens_pedido'].append(item_sugerido)
+                estado_conversa['itens_pedido'].append({'nome': item_sugerido, 'preco': preco_sugerido})
+                estado_conversa['valor_total'] += preco_sugerido
                 estado_conversa['esperando'] = 'adicionar_mais'
                 estado_conversa['item_sugerido'] = None
                 estado_conversa['descricao_sugerida'] = None
                 estado_conversa['preco_sugerido'] = None
                 return jsonify({
-                    'resposta': f"'{item_sugerido}' adicionado ao pedido. Deseja adicionar mais alguma coisa? (sim/não)",
+                    'resposta': f"'{item_sugerido}' (R${preco_sugerido:.2f}) adicionado ao pedido. Deseja adicionar mais alguma coisa? (sim/não)",
                     'esperando': 'adicionar_mais',
                     'id_conversa': id_conversa
                 })
@@ -170,22 +177,55 @@ def chat():
                     'esperando': 'pedido',
                     'id_conversa': id_conversa
                 })
+            elif extrair_intencao(user_input) == "REMOVER_ITEM":
+                estado_conversa['esperando'] = 'remover_item'
+                return jsonify({
+                    'resposta': "Qual item você gostaria de remover?",
+                    'esperando': 'remover_item',
+                    'itens_pedido': [item['nome'] for item in itens_pedido], # Lista os itens para o usuário
+                    'id_conversa': id_conversa
+                })
             else:
                 estado_conversa['esperando'] = 'confirmar_finalizar'
-                itens_listados = "\n- ".join(itens_pedido)
+                itens_listados = "\n- ".join([item['nome'] for item in itens_pedido])
                 return jsonify({
-                    'resposta': f"Seu pedido atual é:\n- {itens_listados}\n\nConfirma o pedido? (sim/não)",
+                    'resposta': f"Seu pedido atual é:\n- {itens_listados}\n\nValor total: R${valor_total:.2f}\n\nConfirma o pedido? (sim/não)",
                     'esperando': 'confirmar_finalizar',
                     'itens_pedido': itens_pedido,
+                    'valor_total': valor_total,
+                    'id_conversa': id_conversa
+                })
+
+        elif esperando == 'remover_item':
+            item_para_remover = user_input.strip().lower()
+            removido = False
+            for i in range(len(itens_pedido)):
+                if itens_pedido[i]['nome'].lower() == item_para_remover:
+                    removido = True
+                    valor_removido = itens_pedido.pop(i)['preco']
+                    estado_conversa['valor_total'] -= valor_removido
+                    break
+            if removido:
+                itens_listados = "\n- ".join([item['nome'] for item in itens_pedido])
+                return jsonify({
+                    'resposta': f"'{item_para_remover}' removido do pedido. Seu pedido atual é:\n- {itens_listados}\n\nValor total: R${valor_total:.2f}\n\nDeseja adicionar mais alguma coisa? (sim/não)",
+                    'esperando': 'adicionar_mais',
+                    'id_conversa': id_conversa
+                })
+            else:
+                return jsonify({
+                    'resposta': f"'{item_para_remover}' não encontrado no seu pedido atual. O que mais gostaria de fazer?",
+                    'esperando': 'adicionar_mais',
+                    'itens_pedido': [item['nome'] for item in itens_pedido],
                     'id_conversa': id_conversa
                 })
 
         elif esperando == 'confirmar_finalizar':
             if user_input.lower() in ['sim', 's']:
-                for item in itens_pedido:
-                    PedidosArmazenados(numero_cliente_logado, item)
+                PedidosArmazenados(numero_cliente_logado, itens_pedido, valor_total)
                 estado_conversa['esperando'] = None
                 estado_conversa['itens_pedido'] = []
+                estado_conversa['valor_total'] = 0.0
                 return jsonify({
                     'resposta': "Pedido finalizado com sucesso! Obrigado!",
                     'id_conversa': id_conversa
@@ -193,12 +233,13 @@ def chat():
             else:
                 estado_conversa['esperando'] = None
                 estado_conversa['itens_pedido'] = []
+                estado_conversa['valor_total'] = 0.0
                 return jsonify({
                     'resposta': "Pedido cancelado. Se quiser fazer um novo pedido, diga 'quero fazer um pedido'.",
                     'id_conversa': id_conversa
                 })
 
-        elif esperando == 'pedido_remocao':
+        elif esperando == 'pedido_remocao': # Mantive essa parte para remover pedidos antigos (histórico)
             pedido_remover = user_input.strip()
             resultado_remocao = removerPedidos(numero_cliente_logado, pedido_remover)
             estado_conversa['esperando'] = None
@@ -217,13 +258,24 @@ def chat():
 
             if intencao == "FAZER_PEDIDO":
                 estado_conversa['esperando'] = 'pedido'
-                estado_conversa['itens_pedido'] = [] # Inicializa a lista de itens do pedido
+                estado_conversa['itens_pedido'] = []
+                estado_conversa['valor_total'] = 0.0
                 return jsonify({
                     'resposta': "Certo! Qual será seu primeiro item?",
                     'esperando': 'pedido',
                     'id_conversa': id_conversa
                 })
-
+            elif intencao == "REMOVER_ITEM": # Nova intenção para remover item do pedido atual
+                if estado_conversa['itens_pedido']:
+                    estado_conversa['esperando'] = 'remover_item'
+                    return jsonify({
+                        'resposta': "Qual item você gostaria de remover?",
+                        'esperando': 'remover_item',
+                        'itens_pedido': [item['nome'] for item in itens_pedido],
+                        'id_conversa': id_conversa
+                    })
+                else:
+                    return jsonify({'resposta': "Seu pedido está vazio. O que gostaria de pedir?", 'esperando': 'pedido', 'id_conversa': id_conversa})
             elif intencao == "CONSULTAR_PEDIDO":
                 resultado = BuscarPedidos(numero_cliente_logado)
                 estado_conversa['esperando'] = None
@@ -231,8 +283,7 @@ def chat():
                     'resposta': resultado,
                     'id_conversa': id_conversa
                 })
-
-            elif intencao == "REMOVER_PEDIDO":
+            elif intencao == "REMOVER_PEDIDO": # Intenção antiga para remover pedidos históricos
                 pedidos_atuais_texto = BuscarPedidos(numero_cliente_logado)
                 estado_conversa['esperando'] = 'pedido_remocao'
                 estado_conversa['pedidos_atuais'] = pedidos_atuais_texto
@@ -268,12 +319,21 @@ def chat():
         return jsonify({'resposta': "Ocorreu um erro inesperado.", 'error': True, 'id_conversa': id_conversa}), 500
 
 # Rotas para o painel de administração
-@app.route('/admin/pedidos', methods=['GET'])
+
+@app.route('/admin/pedidos')
 def admin_listar_pedidos():
-    pedidos = buscar_pedidos_admin()
-    nao_finalizados = [p for p in pedidos if not p['finalizado']]
-    finalizados = [p for p in pedidos if p['finalizado']]
-    return jsonify({'nao_finalizados': nao_finalizados, 'finalizados': finalizados})
+    pedidos_data = buscar_pedidos_admin()
+    print(f"Tipo de pedidos_data: {type(pedidos_data)}")
+    print(f"Conteúdo de pedidos_data: {pedidos_data}")
+    nao_finalizados = pedidos_data.get('nao_finalizados', [])
+    finalizados = pedidos_data.get('finalizados', [])
+    return jsonify({"nao_finalizados": nao_finalizados, "finalizados": finalizados})
+
+
+@app.route('/admin/pedidos/cliente/<numero_cliente>/finalizar', methods=['POST'])
+def finalizar_pedidos_cliente_route(numero_cliente):
+    resultado = finalizar_pedidos_cliente(numero_cliente) # Chama a função do banco
+    return jsonify(resultado), 200
 
 @app.route('/admin/pedidos/<int:pedido_id>/finalizar', methods=['POST'])
 def admin_finalizar_pedido(pedido_id):

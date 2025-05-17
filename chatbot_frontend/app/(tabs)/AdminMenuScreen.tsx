@@ -4,11 +4,12 @@ import { API_BASE_URL } from '../../utils/api';
 import AdminOrderList from './AdminOrderList';
 import AdminMenuList from './AdminMenuList';
 
-interface Pedido {
-  id: number;
-  numero_cliente: string;
-  item: string;
-  preco: number;
+interface PedidoAgrupado {
+  cliente: string;
+  itens: string;
+  preco_total: number;
+  data_inicio: string;
+  data_fim: string;
   finalizado: boolean;
 }
 
@@ -19,8 +20,8 @@ interface MenuItem {
 }
 
 const AdminHomeScreen = () => {
-  const [pedidosNaoFinalizados, setPedidosNaoFinalizados] = useState<Pedido[]>([]);
-  const [pedidosFinalizados, setPedidosFinalizados] = useState<Pedido[]>([]);
+  const [pedidosNaoFinalizados, setPedidosNaoFinalizados] = useState<PedidoAgrupado[]>([]);
+  const [pedidosFinalizados, setPedidosFinalizados] = useState<PedidoAgrupado[]>([]);
   const [loadingPedidos, setLoadingPedidos] = useState(true);
   const [menuItens, setMenuItens] = useState<MenuItem[]>([]);
   const [loadingMenu, setLoadingMenu] = useState(true);
@@ -107,20 +108,25 @@ const AdminHomeScreen = () => {
             />
           )}
 
-          <Text style={[styles.title, { marginTop: 20 }]}>Pedidos Finalizados</Text>
-          <FlatList
-            data={pedidosFinalizados}
-            keyExtractor={(item) => String(item.id)}
-            renderItem={({ item }) => (
-              <View style={styles.pedidoItem}>
-                <Text>ID: {item.id}</Text>
-                <Text>Cliente: {item.numero_cliente}</Text>
-                <Text>Item: {item.item}</Text>
-                <Text>Preço: R${item.preco.toFixed(2)}</Text>
-                <Text style={{ color: 'green' }}>Finalizado</Text>
-              </View>
-            )}
-          />
+          {pedidosFinalizados.length > 0 && (
+            <>
+              <Text style={[styles.title, { marginTop: 20 }]}>Pedidos Finalizados</Text>
+              <FlatList
+                data={pedidosFinalizados}
+                keyExtractor={(item) => item.cliente}
+                renderItem={({ item }) => (
+                  <View style={styles.pedidoItem}>
+                    <Text>Cliente: {item.cliente}</Text>
+                    <Text>Itens:</Text>
+                    <Text>{item.itens}</Text>
+                    <Text>Preço Total: R${item.preco_total.toFixed(2)}</Text>
+                    <Text>Data do Pedido: {item.data_inicio}</Text>
+                    <Text style={{ color: 'green' }}>Finalizado</Text>
+                  </View>
+                )}
+              />
+            </>
+          )}
         </View>
       ) : (
         <View style={{ flex: 1 }}>

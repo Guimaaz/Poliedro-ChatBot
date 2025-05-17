@@ -2,57 +2,59 @@ import React, { useState } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { API_BASE_URL } from '../../utils/api';
 
-interface Pedido {
-  id: number;
-  numero_cliente: string;
-  item: string;
-  preco: number;
+interface PedidoAgrupado {
+  cliente: string;
+  itens: string;
+  preco_total: number;
+  data_inicio: string;
+  data_fim: string;
   finalizado: boolean;
 }
 
 interface AdminOrderListProps {
-  pedidosNaoFinalizados: Pedido[];
+  pedidosNaoFinalizados: PedidoAgrupado[];
   onPedidoFinalizado: () => void;
 }
 
 const AdminOrderList: React.FC<AdminOrderListProps> = ({ pedidosNaoFinalizados, onPedidoFinalizado }) => {
-  const [finalizandoPedidoId, setFinalizandoPedidoId] = useState<number | null>(null);
+  const [finalizandoCliente, setFinalizandoCliente] = useState<string | null>(null);
 
-  const handleFinalizarPedido = async (pedidoId: number) => {
-    setFinalizandoPedidoId(pedidoId);
+  const handleFinalizarPedidoAgrupado = async (cliente: string) => {
+    setFinalizandoCliente(cliente);
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/pedidos/${pedidoId}/finalizar`, {
+      const response = await fetch(`${API_BASE_URL}/admin/pedidos/cliente/${cliente}/finalizar`, {
         method: 'POST',
       });
 
       if (response.ok) {
-        Alert.alert('Sucesso', `Pedido ${pedidoId} finalizado com sucesso!`);
+        Alert.alert('Sucesso', `Pedidos de ${cliente} finalizados com sucesso!`);
         onPedidoFinalizado();
       } else {
         const errorData = await response.json();
-        Alert.alert('Erro', errorData.message || `Falha ao finalizar o pedido ${pedidoId}.`);
+        Alert.alert('Erro', errorData.message || `Falha ao finalizar os pedidos de ${cliente}.`);
       }
     } catch (error) {
-      console.error('Erro ao finalizar pedido:', error);
+      console.error('Erro ao finalizar pedidos:', error);
       Alert.alert('Erro', 'Ocorreu um erro ao comunicar com o servidor.');
     } finally {
-      setFinalizandoPedidoId(null);
+      setFinalizandoCliente(null);
     }
   };
 
-  const renderItem = ({ item }: { item: Pedido }) => (
+  const renderItem = ({ item }: { item: PedidoAgrupado }) => (
     <View style={styles.pedidoItem}>
-      <Text>ID: {item.id}</Text>
-      <Text>Cliente: {item.numero_cliente}</Text>
-      <Text>Item: {item.item}</Text>
-      <Text>Preço: R${item.preco.toFixed(2)}</Text>
+      <Text>Cliente: {item.cliente}</Text>
+      <Text>Itens:</Text>
+      <Text>{item.itens}</Text>
+      <Text>Preço Total: R${item.preco_total.toFixed(2)}</Text>
+      <Text>Data do Pedido: {item.data_inicio}</Text>
       <TouchableOpacity
-        style={[styles.finalizarButton, finalizandoPedidoId === item.id && styles.finalizandoButton]}
-        onPress={() => handleFinalizarPedido(item.id)}
-        disabled={finalizandoPedidoId === item.id || item.finalizado}
+        style={[styles.finalizarButton, finalizandoCliente === item.cliente && styles.finalizandoButton]}
+        onPress={() => handleFinalizarPedidoAgrupado(item.cliente)}
+        disabled={finalizandoCliente === item.cliente || item.finalizado}
       >
         <Text style={styles.buttonText}>
-          {finalizandoPedidoId === item.id ? 'Finalizando...' : 'Finalizar'}
+          {finalizandoCliente === item.cliente ? 'Finalizando...' : 'Finalizar'}
         </Text>
       </TouchableOpacity>
     </View>
@@ -61,7 +63,7 @@ const AdminOrderList: React.FC<AdminOrderListProps> = ({ pedidosNaoFinalizados, 
   return (
     <FlatList
       data={pedidosNaoFinalizados}
-      keyExtractor={(item) => String(item.id)}
+      keyExtractor={(item) => item.cliente}
       renderItem={renderItem}
     />
   );
