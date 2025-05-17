@@ -1,3 +1,4 @@
+# server/BancoPedidos.py (continuação)
 import sqlite3
 import re
 import difflib
@@ -21,17 +22,18 @@ def CreateDatabase():
     CREATE TABLE IF NOT EXISTS clientes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     numero_cliente TEXT NOT NULL UNIQUE,
-    senha TEXT NOT NULL
-)
-''')
+    senha TEXT NOT NULL,
+    is_admin INTEGER DEFAULT 0
+    )
+    ''')
 
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS cardapios (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     pedido TEXT NOT NULL UNIQUE,
     preco DECIMAL(10, 2) NOT NULL
-)
-''')
+    )
+    ''')
 
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS pedidos (
@@ -41,10 +43,11 @@ def CreateDatabase():
     item_id INTEGER NOT NULL,
     preco DECIMAL(10, 2) NOT NULL,
     data TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    finalizado INTEGER DEFAULT 0,
     FOREIGN KEY (numero_cliente) REFERENCES clientes (numero_cliente),
     FOREIGN KEY (item_id) REFERENCES cardapios (id)
-)
-''')
+    )
+    ''')
 
     # Inserir itens do cardápio se não existirem
     for pedido, preco in itensCardapio:
@@ -52,6 +55,15 @@ def CreateDatabase():
             cursor.execute("INSERT INTO cardapios (pedido, preco) VALUES (?, ?)", (pedido, preco))
         except sqlite3.IntegrityError:
             pass # Item já existe
+
+    numero_admin = "(11) 97430-6793"
+    senha_admin_hash = hash_senha("admin")
+    try:
+        cursor.execute("INSERT INTO clientes (numero_cliente, senha, is_admin) VALUES (?, ?, ?)", (numero_admin, senha_admin_hash, 1))
+        conexao.commit()
+        print("Usuário administrador adicionado.")
+    except sqlite3.IntegrityError:
+        print("Usuário administrador já existe.")
 
     # usuários teste chumbados
     numero_teste = "(11) 99999-1111"
@@ -64,14 +76,11 @@ def CreateDatabase():
     senha_teste_hash2 = hash_senha(senha_teste_plana2)
     senha_teste_hash3 = hash_senha(senha_teste_plana3)
 
-    try:
-      
-        cursor.execute("INSERT INTO clientes (numero_cliente, senha) VALUES (?, ?)", (numero_teste2, senha_teste_hash2))
-        cursor.execute("INSERT INTO clientes (numero_cliente, senha) VALUES (?, ?)", (numero_teste, senha_teste_hash))
-        cursor.execute("INSERT INTO clientes (numero_cliente, senha) VALUES (?, ?)", (numero_teste3, senha_teste_hash3))
-        conexao.commit()
-    except sqlite3.IntegrityError:
-        print(f"Usuário de teste com número {numero_teste} já existe.")
+    cursor.execute("INSERT INTO clientes (numero_cliente, senha) VALUES (?, ?)", (numero_teste2, senha_teste_hash2))
+    cursor.execute("INSERT INTO clientes (numero_cliente, senha) VALUES (?, ?)", (numero_teste, senha_teste_hash))
+    cursor.execute("INSERT INTO clientes (numero_cliente, senha) VALUES (?, ?)", (numero_teste3, senha_teste_hash3))
+    conexao.commit()
+
 
     conexao.commit()
     conexao.close()
@@ -100,19 +109,19 @@ def autenticar_cliente(numero_cliente, senha):
     conexao = sqlite3.connect(DATABASE_NAME)
     cursor = conexao.cursor()
     print(f"Tentando autenticar cliente: {numero_cliente}")
-    cursor.execute("SELECT senha FROM clientes WHERE numero_cliente = ?", (numero_cliente,))
+    cursor.execute("SELECT id, senha, is_admin FROM clientes WHERE numero_cliente = ?", (numero_cliente,))
     resultado = cursor.fetchone()
     print(f"Resultado da busca no banco: {resultado}")
     conexao.close()
 
     if resultado:
-        senha_hash_db = resultado[0]
+        user_id, senha_hash_db, is_admin = resultado
         senha_correta = verificar_senha(senha, senha_hash_db)
         print(f"Senha digitada hash: {hash_senha(senha)}")
         print(f"Senha do banco hash: {senha_hash_db}")
         print(f"Senha correta: {senha_correta}")
-        return senha_correta
-    return False
+        return senha_correta, is_admin
+    return False, 0
 
 def PedidosArmazenados(numero_cliente, pedido):
     conexao = sqlite3.connect(DATABASE_NAME)
@@ -245,6 +254,65 @@ def AdicionarItemPedido(numero_cliente, item_nome):
     conexao.commit()
     conexao.close()
     return f"'{item_nome}' adicionado ao seu pedido."
+
+def buscar_pedidos_admin():
+    conexao = sqlite3.connect(DATABASE_NAME)
+    cursor = conexao.cursor()
+    cursor.execute('''
+        SELECT p.id, p.numero_cliente, p.item, p.preco, p.finalizado
+        FROM pedidos p
+    ''')
+    pedidos = cursor.fetchall()
+    conexao.close()
+    return [{"id": p[0], "numero_cliente": p[1], "item": p[2], "preco": p[3], "finalizado": bool(p[4])} for p in pedidos]
+
+def finalizar_pedido_admin(pedido_id):
+    conexao = sqlite3.connect(DATABASE_NAME)
+    cursor = conexao.cursor()
+    cursor.execute("UPDATE pedidos SET finalizado = 1 WHERE id = ?", (pedido_id,))
+    conexao.commit()
+    conexao.close()
+    return f"Pedido {pedido_id} finalizado."
+
+def reabrir_pedido_admin(pedido_id):
+    conexao = sqlite3.connect(DATABASE_NAME)
+    cursor = conexao.cursor()
+    cursor.execute("UPDATE pedidos SET finalizado = 0 WHERE id = ?", (pedido_id,))
+    conexao.commit()
+    conexao.close()
+    return f"Pedido {pedido_id} reaberto."
+
+def buscar_cardapio_admin():
+    conexao = sqlite3.connect(DATABASE_NAME)
+    cursor = conexao.cursor()
+    cursor.execute("SELECT id, pedido, preco FROM cardapios")
+    cardapio = cursor.fetchall()
+    conexao.close()
+    return [{"id": c[0], "pedido": c[1], "preco": c[2]} for c in cardapio]
+
+def atualizar_cardapio_admin(item_id, pedido, preco):
+    conexao = sqlite3.connect(DATABASE_NAME)
+    cursor = conexao.cursor()
+    cursor.execute("UPDATE cardapios SET pedido = ?, preco = ? WHERE id = ?", (pedido, preco, item_id))
+    conexao.commit()
+    conexao.close()
+    return f"Item {item_id} atualizado."
+
+def deletar_cardapio_admin(item_id):
+    conexao = sqlite3.connect(DATABASE_NAME)
+    cursor = conexao.cursor()
+    cursor.execute("DELETE FROM cardapios WHERE id = ?", (item_id,))
+    conexao.commit()
+    conexao.close()
+    return f"Item {item_id} deletado."
+
+def buscar_clientes_admin():
+    conexao = sqlite3.connect(DATABASE_NAME)
+    cursor = conexao.cursor()
+    cursor.execute("SELECT id, numero_cliente FROM clientes WHERE is_admin = 0")
+    clientes = cursor.fetchall()
+    conexao.close()
+    return [{"id": c[0], "numero_cliente": c[1]} for c in clientes]
 
 # Garante que o banco e o cardápio sejam criados na inicialização do módulo
 CreateDatabase()
