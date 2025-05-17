@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import { View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet, SafeAreaView, useWindowDimensions, Keyboard, Alert,KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet, SafeAreaView, useWindowDimensions, Keyboard, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { sendMessage } from '../../utils/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
@@ -22,7 +22,7 @@ type ChatbotScreenNavigationProp = NativeStackNavigationProp<RootStackParamList,
 
 export default function ChatScreen() {
   const { width } = useWindowDimensions();
-  const containerWidth = width < 600 ? width * 0.9 : 500;
+  const containerWidth = width < 600 ? width * 0.9 : 1000;
   const flatListRef = useRef<FlatList>(null);
   const navigation = useNavigation<ChatbotScreenNavigationProp>();
 
@@ -151,14 +151,26 @@ export default function ChatScreen() {
     }, 100);
   };
 
-  const renderMessage = ({ item }: { item: Message }) => (
-    <View style={[
-      styles.messageBubble,
-      item.sender === 'user' ? styles.userBubble : styles.botBubble
-    ]}>
-      <Text style={styles.messageText}>{item.text}</Text>
-    </View>
-  );
+  const renderMessage = ({ item }: { item: Message }) => {
+    const isBot = item.sender === 'bot';
+    const messageTextParts = item.text.split('\n').flatMap((line, index, array) => {
+      const trimmedLine = line.trim();
+      if (trimmedLine.startsWith('*') && trimmedLine.endsWith('*') && trimmedLine.length > 1) {
+        const category = trimmedLine.substring(1, trimmedLine.length - 1);
+        return [<Text key={`bold-${index}`} style={styles.bold}>{category}</Text>, index < array.length - 1 ? '\n' : null];
+      }
+      return [<Text key={`normal-${index}`}>{line}</Text>, index < array.length - 1 ? '\n' : null];
+    }).filter(Boolean);
+
+    return (
+      <View style={[
+        styles.messageBubble,
+        isBot ? styles.botBubble : styles.userBubble
+      ]}>
+        <Text style={styles.messageText}>{messageTextParts}</Text>
+      </View>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -173,7 +185,7 @@ export default function ChatScreen() {
           onLayout={scrollToBottom}
         />
 
-        <KeyboardAvoidingView behavior = {'padding'} keyboardVerticalOffset={108} style={styles.inputContainer}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? 108 : 0} style={styles.inputContainer}>
           <TextInput
             style={styles.input}
             placeholder={inputPlaceholder}
@@ -207,7 +219,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#4B3D3D',
   },
   container: {
-  
+
     flex: 1,
     backgroundColor: '#bfb493',
     borderRadius: 30,
@@ -256,8 +268,8 @@ const styles = StyleSheet.create({
     borderColor: '#ddd',
     backgroundColor: '#fff',
     alignItems: 'center',
-    
-    
+
+
   },
   input: {
     flex: 1,
@@ -270,8 +282,9 @@ const styles = StyleSheet.create({
     marginRight: 10,
     paddingVertical: 12,
     backgroundColor: '#fff',
-    margin : 10
-    
+    margin: 10
+
+
   },
   sendButton: {
     backgroundColor: '#465575',
@@ -292,5 +305,8 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 5,
     alignSelf: 'center',
+  },
+  bold: {
+    fontWeight: 'bold',
   },
 });

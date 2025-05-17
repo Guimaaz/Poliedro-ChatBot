@@ -1,77 +1,183 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../../navigation';
+// AdminHomeScreen.tsx
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
+import { API_BASE_URL } from '../../utils/api';
+import AdminOrderList from './AdminOrderList';
+import AdminMenuList from './AdminMenuList';
 
-type AdminHomeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'AdminHomeScreen'>;
-
-export default function AdminHomeScreen() {
-  const navigation = useNavigation<AdminHomeScreenNavigationProp>();
-
-  const navigateToPedidos = () => {
-    navigation.navigate('AdminPedidosScreen');
-  };
-
-  const navigateToCardapio = () => {
-    navigation.navigate('AdminCardapioScreen');
-  };
-
-  const navigateToClientes = () => {
-    navigation.navigate('AdminClientesScreen');
-  };
-
-  return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
-        <Text style={styles.title}>Painel de Administrador</Text>
-
-        <TouchableOpacity style={styles.button} onPress={navigateToPedidos}>
-          <Text style={styles.buttonText}>Pedidos</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.button} onPress={navigateToCardapio}>
-          <Text style={styles.buttonText}>Cardápio</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.button} onPress={navigateToClientes}>
-          <Text style={styles.buttonText}>Clientes</Text>
-        </TouchableOpacity>
-      </View>
-    </SafeAreaView>
-  );
+interface Pedido {
+  id: number;
+  numero_cliente: string;
+  item: string;
+  preco: number;
+  finalizado: boolean;
 }
 
+interface MenuItem {
+  id: number;
+  pedido: string;
+  preco: number;
+}
+
+const AdminHomeScreen = () => {
+  const [pedidosNaoFinalizados, setPedidosNaoFinalizados] = useState<Pedido[]>([]);
+  const [pedidosFinalizados, setPedidosFinalizados] = useState<Pedido[]>([]);
+  const [loadingPedidos, setLoadingPedidos] = useState(true);
+  const [menuItens, setMenuItens] = useState<MenuItem[]>([]);
+  const [loadingMenu, setLoadingMenu] = useState(true);
+  const [exibirPedidos, setExibirPedidos] = useState(true); 
+
+  const carregarPedidos = useCallback(async () => {
+    setLoadingPedidos(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/pedidos`);
+      if (response.ok) {
+        const data = await response.json();
+        setPedidosNaoFinalizados(data.nao_finalizados);
+        setPedidosFinalizados(data.finalizados);
+      } else {
+        console.error('Falha ao carregar pedidos:', response);
+        // Adicione tratamento de erro adequado
+      }
+    } catch (error) {
+      console.error('Erro ao carregar pedidos:', error);
+      // Adicione tratamento de erro adequado
+    } finally {
+      setLoadingPedidos(false);
+    }
+  }, []);
+
+  const carregarCardapio = useCallback(async () => {
+    setLoadingMenu(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/cardapio`);
+      if (response.ok) {
+        const data = await response.json();
+        setMenuItens(data);
+      } else {
+        console.error('Falha ao carregar cardápio:', response);
+        // Adicione tratamento de erro
+      }
+    } catch (error) {
+      console.error('Erro ao carregar cardápio:', error);
+      // Adicione tratamento de erro
+    } finally {
+      setLoadingMenu(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    carregarPedidos();
+    carregarCardapio();
+  }, [carregarPedidos, carregarCardapio]);
+
+  const handlePedidoFinalizado = useCallback(() => {
+    carregarPedidos(); // Recarrega os pedidos após a finalização
+  }, [carregarPedidos]);
+
+  const handleMenuItemUpdated = useCallback(() => {
+    carregarCardapio(); // Recarrega o cardápio após a atualização
+  }, [carregarCardapio]);
+
+  return (
+    <View style={styles.container}>
+      <View style={styles.buttonContainer}>
+        <TouchableOpacity
+          style={[styles.tabButton, exibirPedidos && styles.activeTab]}
+          onPress={() => setExibirPedidos(true)}
+        >
+          <Text style={styles.tabButtonText}>Pedidos</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tabButton, !exibirPedidos && styles.activeTab]}
+          onPress={() => setExibirPedidos(false)}
+        >
+          <Text style={styles.tabButtonText}>Cardápio</Text>
+        </TouchableOpacity>
+      </View>
+
+      {exibirPedidos ? (
+        <View>
+          <Text style={styles.title}>Pedidos Pendentes</Text>
+          {loadingPedidos ? (
+            <Text>Carregando pedidos...</Text>
+          ) : (
+            <AdminOrderList
+              pedidosNaoFinalizados={pedidosNaoFinalizados}
+              onPedidoFinalizado={handlePedidoFinalizado}
+            />
+          )}
+
+          <Text style={[styles.title, { marginTop: 20 }]}>Pedidos Finalizados</Text>
+          <FlatList
+            data={pedidosFinalizados}
+            keyExtractor={(item) => String(item.id)}
+            renderItem={({ item }) => (
+              <View style={styles.pedidoItem}>
+                <Text>ID: {item.id}</Text>
+                <Text>Cliente: {item.numero_cliente}</Text>
+                <Text>Item: {item.item}</Text>
+                <Text>Preço: R${item.preco.toFixed(2)}</Text>
+                <Text style={{ color: 'green' }}>Finalizado</Text>
+              </View>
+            )}
+          />
+        </View>
+      ) : (
+        <View>
+          <Text style={styles.title}>Cardápio</Text>
+          {loadingMenu ? (
+            <Text>Carregando cardápio...</Text>
+          ) : (
+            <AdminMenuList menuItens={menuItens} onMenuItemUpdated={handleMenuItemUpdated} />
+          )}
+        </View>
+      )}
+    </View>
+  );
+};
+
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#4B3D3D',
-  },
   container: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#e0e0e0',
     padding: 20,
+    backgroundColor: '#f5f5f5',
   },
   title: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: 'bold',
-    marginBottom: 30,
-    color: '#000',
-    fontFamily: "Cal Sans"
+    marginBottom: 15,
   },
-  button: {
-    backgroundColor: '#5C75A7',
-    paddingVertical: 15,
-    paddingHorizontal: 30,
-    borderRadius: 25,
+  pedidoItem: {
+    padding: 15,
+    marginBottom: 10,
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+  buttonContainer: {
+    flexDirection: 'row',
     marginBottom: 20,
-    alignItems: 'center',
-    width: 200,
   },
-  buttonText: {
+  tabButton: {
+    flex: 1,
+    paddingVertical: 12,
+    alignItems: 'center',
+    backgroundColor: '#ddd',
+    borderRadius: 5,
+    marginHorizontal: 5,
+  },
+  activeTab: {
+    backgroundColor: '#5C75A7',
+  },
+  tabButtonText: {
+    fontSize: 16,
+    color: '#333',
+  },
+  activeTabText: {
     color: '#fff',
-    fontSize: 18,
   },
 });
+
+export default AdminHomeScreen;

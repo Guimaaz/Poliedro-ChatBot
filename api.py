@@ -17,7 +17,8 @@ from server.BancoPedidos import (
     buscar_cardapio_admin,
     atualizar_cardapio_admin,
     deletar_cardapio_admin,
-    buscar_clientes_admin
+    buscar_clientes_admin,
+    buscar_cardapio_completo
 )
 import re
 import os
@@ -98,17 +99,18 @@ def chat():
 
     # Inicializa o estado da conversa se não existir
     if id_conversa not in conversa_estado:
-        conversa_estado[id_conversa] = {'esperando': None, 'itens_pedido': [], 'item_sugerido': None, 'pedidos_atuais': None}
+        conversa_estado[id_conversa] = {'esperando': None, 'itens_pedido': [], 'item_sugerido': None, 'descricao_sugerida': None, 'pedidos_atuais': None}
 
     estado_conversa = conversa_estado[id_conversa]
     esperando = estado_conversa['esperando']
     itens_pedido = estado_conversa['itens_pedido']
     item_sugerido = estado_conversa['item_sugerido']
+    descricao_sugerida = estado_conversa['descricao_sugerida']
     pedidos_atuais = estado_conversa['pedidos_atuais']
 
     try:
         if esperando == 'pedido':
-            itemSugerido_verificado, exato = VerificarItensCardapio(user_input)
+            itemSugerido_verificado, exato, descricao_item = VerificarItensCardapio(user_input)
 
             if not itemSugerido_verificado:
                 return jsonify({
@@ -120,10 +122,12 @@ def chat():
             if not exato:
                 estado_conversa['esperando'] = 'confirmacao_pedido'
                 estado_conversa['item_sugerido'] = itemSugerido_verificado
+                estado_conversa['descricao_sugerida'] = descricao_item
                 return jsonify({
-                    'resposta': f"Você quis dizer '{itemSugerido_verificado}'? (sim/não)",
+                    'resposta': f"Você quis dizer '{itemSugerido_verificado}'? ({descricao_item}) (sim/não)",
                     'esperando': 'confirmacao_pedido',
                     'item_sugerido': itemSugerido_verificado,
+                    'descricao_sugerida': descricao_item,
                     'id_conversa': id_conversa
                 })
 
@@ -140,6 +144,7 @@ def chat():
                 estado_conversa['itens_pedido'].append(item_sugerido)
                 estado_conversa['esperando'] = 'adicionar_mais'
                 estado_conversa['item_sugerido'] = None
+                estado_conversa['descricao_sugerida'] = None
                 return jsonify({
                     'resposta': f"'{item_sugerido}' adicionado ao pedido. Deseja adicionar mais alguma coisa? (sim/não)",
                     'esperando': 'adicionar_mais',
@@ -148,6 +153,7 @@ def chat():
             else:
                 estado_conversa['esperando'] = 'pedido'
                 estado_conversa['item_sugerido'] = None
+                estado_conversa['descricao_sugerida'] = None
                 return jsonify({
                     'resposta': "Entendido. Por favor, diga novamente o que gostaria de pedir.",
                     'esperando': 'pedido',
@@ -239,50 +245,19 @@ def chat():
                     'id_conversa': id_conversa
                 })
             elif intencao == "VER_CARDAPIO":
-                cardapio_texto = """Olá! 😊
-
-Peixes
-- Filé de Salmão Grelhado - Acompanha arroz e legumes salteados - 35.90
-- Bacalhau à Brás - Bacalhau desfiado com batata palha e ovos - 42.50
-- Tilápia Empanada - Servida com purê de batata e salada verde - 28.90
-
-Aves
-- Frango à Parmegiana - Filé de frango empanado com queijo e molho de tomate - 24.90
-- Peito de Frango Grelhado - Servido com acompanhamento à sua escolha - 22.50
-- Strogonoff de Frango - Cremoso strogonoff com arroz e batata palha - 26.00
-
-Carnes
-- Picanha na Chapa - Suculenta picanha grelhada, acompanha arroz, feijão e farofa - 58.90
-- Filé Mignon ao Molho Madeira - Clássico filé mignon com molho madeira e purê de batata - 55.00
-- Costela Assada - Costela bovina assada lentamente, acompanha mandioca cozida e vinagrete - 49.90
-
-Massas
-- Lasanha Bolonhesa - Camadas de massa com molho bolonhesa e queijo - 32.90
-- Fettuccine Alfredo - Massa fresca com molho cremoso de queijo parmesão - 30.50
-- Nhoque ao Sugo - Nhoque de batata com molho de tomate caseiro - 27.00
-
-Vegetarianos
-- Risoto de Cogumelos - Risoto cremoso com variedade de cogumelos frescos - 34.00
-- Hambúrguer de Grão-de-Bico - Hambúrguer artesanal de grão-de-bico, acompanha pão e salada - 18.90
-- Espaguete de Abobrinha - Espaguete de abobrinha com molho pesto e tomate cereja - 20.90
-
-Porções
-- Batata Frita - Porção de batatas fritas crocantes - 10.90
-- Isca de Peixe - Tiras de peixe empanadas e fritas - 15.50
-- Bolinho de Aipim - Bolinhos de aipim recheados com queijo - 12.50
-
-Sobremesas
-- Pudim de Leite - Clássico pudim de leite condensado - 8.90
-- Torta de Limão - Torta cremosa de limão com merengue - 10.00
-- Brownie com Sorvete - Brownie de chocolate com bola de sorvete - 15.90
-
-Saladas
-- Salada Caesar - Alface romana, croutons, queijo parmesão e molho Caesar - 14.90
-- Salada Tropical - Mix de folhas verdes, frutas da estação e molho agridoce - 18.00
-- Salada Caprese - Tomate, mussarela de búfala e manjericão com azeite balsâmico - 19.00
-
-O que gostaria de pedir hoje?"""
-                return jsonify({'resposta': cardapio_texto, 'id_conversa': id_conversa})
+                cardapio_db = buscar_cardapio_completo()
+                if cardapio_db:
+                    cardapio_texto = "Cardápio do Restaurante\n"
+                    for categoria, itens in cardapio_db.items():
+                        cardapio_texto += f"\n*{categoria}*\n"
+                        for item in itens:
+                            cardapio_texto += f"- { item['pedido']} - R${item['preco']:.2f}"
+                            if item['descricao']:
+                                cardapio_texto += f" - {item['descricao']}"
+                            cardapio_texto += "\n"
+                    return jsonify({'resposta': cardapio_texto.strip(), 'id_conversa': id_conversa})
+                else:
+                    return jsonify({'resposta': "O cardápio está vazio no momento.", 'id_conversa': id_conversa})
 
             return jsonify({'resposta': bot_reply, 'id_conversa': id_conversa})
 
@@ -318,9 +293,11 @@ def admin_atualizar_cardapio(item_id):
     data = request.json
     pedido = data.get('pedido')
     preco = data.get('preco')
+    descricao = data.get('descricao', '')
+    categoria = data.get('categoria', 'Outros')
     if pedido is None or preco is None:
         return jsonify({'error': 'Pedido e preço são obrigatórios'}), 400
-    mensagem = atualizar_cardapio_admin(item_id, pedido, preco)
+    mensagem = atualizar_cardapio_admin(item_id, pedido, preco, descricao, categoria)
     return jsonify({'message': mensagem})
 
 @app.route('/admin/cardapio/<int:item_id>', methods=['DELETE'])

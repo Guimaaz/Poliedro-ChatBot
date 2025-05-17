@@ -30,7 +30,9 @@ def CreateDatabase():
     CREATE TABLE IF NOT EXISTS cardapios (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     pedido TEXT NOT NULL UNIQUE,
-    preco DECIMAL(10, 2) NOT NULL
+    preco DECIMAL(10, 2) NOT NULL,
+    categoria TEXT NOT NULL DEFAULT 'Outros',
+    descricao TEXT NOT NULL DEFAULT ''
     )
     ''')
 
@@ -48,9 +50,10 @@ def CreateDatabase():
     )
     ''')
 
-    for pedido, preco in itensCardapio:
+    for item_info in itensCardapio:
+        pedido, preco, categoria, descricao = item_info
         try:
-            cursor.execute("INSERT OR IGNORE INTO cardapios (pedido, preco) VALUES (?, ?)", (pedido, preco))
+            cursor.execute("INSERT OR IGNORE INTO cardapios (pedido, preco, categoria, descricao) VALUES (?, ?, ?, ?)", (pedido, preco, categoria, descricao))
         except sqlite3.IntegrityError:
             pass
 
@@ -81,7 +84,6 @@ def CreateDatabase():
 
     conexao.commit()
     conexao.close()
-
 
 def validar_numero(numero_cliente):
     padrao = r"\(\d{2}\) \d{5}-\d{4}"
@@ -136,16 +138,8 @@ def PedidosArmazenados(numero_cliente, pedido):
     item = cursor.fetchone()
 
     if not item:
-        for p, preco in itensCardapio:
-            if p.lower() == pedido.lower():
-                cursor.execute("INSERT OR IGNORE INTO cardapios (pedido, preco) VALUES (?, ?)", (p, preco))
-                conexao.commit()
-                cursor.execute("SELECT id, pedido, preco FROM cardapios WHERE pedido = ?", (p,))
-                item = cursor.fetchone()
-                break
-        if not item:
-            conexao.close()
-            return "Item não encontrado no cardápio."
+        conexao.close()
+        return "Item não encontrado no cardápio."
 
     cursor.execute("INSERT INTO pedidos (numero_cliente, item, item_id, preco) VALUES (?, ?, ?, ?)",
                     (numero_cliente, item[1], item[0], item[2]))
@@ -206,18 +200,31 @@ def BuscarPedidos(numero_cliente):
 
 def VerificarItensCardapio(pedido):
     pedido = pedido.lower()
+    conexao = sqlite3.connect(DATABASE_NAME)
+    cursor = conexao.cursor()
+    cursor.execute("SELECT pedido FROM cardapios")
+    itens_db = [row[0].lower() for row in cursor.fetchall()]
+    conexao.close()
 
-    for item in itensCardapio:
-        if item[0].lower() == pedido:
-            return item[0], True
+    for item_db in itens_db:
+        if item_db == pedido:
+            conexao = sqlite3.connect(DATABASE_NAME)
+            cursor = conexao.cursor()
+            cursor.execute("SELECT pedido, descricao, preco FROM cardapios WHERE LOWER(pedido) = ?", (pedido,))
+            item_info = cursor.fetchone()
+            conexao.close()
+            return item_info[0], True, item_info[1] if item_info else "", item_info[2] if item_info else 0 # Retorna também a descrição e o preço
 
-    prato_sugerido = difflib.get_close_matches(pedido, [item[0].lower() for item in itensCardapio], n=1, cutoff=0.6)
+    prato_sugerido = difflib.get_close_matches(pedido, itens_db, n=1, cutoff=0.6)
     if prato_sugerido:
-        for item in itensCardapio:
-            if item[0].lower() == prato_sugerido[0]:
-                return item[0], False
+        conexao = sqlite3.connect(DATABASE_NAME)
+        cursor = conexao.cursor()
+        cursor.execute("SELECT pedido, descricao, preco FROM cardapios WHERE LOWER(pedido) = ?", (prato_sugerido[0],))
+        item_info = cursor.fetchone()
+        conexao.close()
+        return item_info[0], False, item_info[1] if item_info else "", item_info[2] if item_info else 0 # Retorna também a descrição e o preço
 
-    return None, False
+    return None, False, "", 0
 
 def AdicionarItemPedido(numero_cliente, item_nome):
     conexao = sqlite3.connect(DATABASE_NAME)
@@ -234,16 +241,8 @@ def AdicionarItemPedido(numero_cliente, item_nome):
     item = cursor.fetchone()
 
     if not item:
-        for p, preco in itensCardapio:
-            if p.lower() == item_nome.lower():
-                cursor.execute("INSERT OR IGNORE INTO cardapios (pedido, preco) VALUES (?, ?)", (p, preco))
-                conexao.commit()
-                cursor.execute("SELECT id, pedido, preco FROM cardapios WHERE pedido = ?", (p,))
-                item = cursor.fetchone()
-                break
-        if not item:
-            conexao.close()
-            return f"Item '{item_nome}' não encontrado no cardápio."
+        conexao.close()
+        return f"Item '{item_nome}' não encontrado no cardápio."
 
     cursor.execute("INSERT INTO pedidos (numero_cliente, item, item_id, preco) VALUES (?, ?, ?, ?)",
                     (numero_cliente, item[1], item[0], item[2]))
@@ -269,7 +268,7 @@ def finalizar_pedido_admin(pedido_id):
     cursor.execute("UPDATE pedidos SET finalizado = 1 WHERE id = ?", (pedido_id,))
     conexao.commit()
     conexao.close()
-    return f"Pedido {pedido_id} finalizado."
+    return f"Pedido ID {pedido_id} finalizado."
 
 def reabrir_pedido_admin(pedido_id):
     conexao = sqlite3.connect(DATABASE_NAME)
@@ -277,23 +276,27 @@ def reabrir_pedido_admin(pedido_id):
     cursor.execute("UPDATE pedidos SET finalizado = 0 WHERE id = ?", (pedido_id,))
     conexao.commit()
     conexao.close()
-    return f"Pedido {pedido_id} reaberto."
+    return f"Pedido ID {pedido_id} reaberto."
 
 def buscar_cardapio_admin():
     conexao = sqlite3.connect(DATABASE_NAME)
     cursor = conexao.cursor()
-    cursor.execute("SELECT id, pedido, preco FROM cardapios")
+    cursor.execute("SELECT id, pedido, preco, categoria, descricao FROM cardapios")
     cardapio = cursor.fetchall()
     conexao.close()
-    return [{"id": c[0], "pedido": c[1], "preco": c[2]} for c in cardapio]
+    return [{"id": c[0], "pedido": c[1], "preco": float(c[2]), "categoria": c[3], "descricao": c[4]} for c in cardapio]
 
-def atualizar_cardapio_admin(item_id, pedido, preco):
+def atualizar_cardapio_admin(item_id, pedido, preco, descricao, categoria='Outros'):
     conexao = sqlite3.connect(DATABASE_NAME)
     cursor = conexao.cursor()
-    cursor.execute("UPDATE cardapios SET pedido = ?, preco = ? WHERE id = ?", (pedido, preco, item_id))
-    conexao.commit()
-    conexao.close()
-    return f"Item {item_id} atualizado."
+    try:
+        cursor.execute("UPDATE cardapios SET pedido = ?, preco = ?, descricao = ?, categoria = ? WHERE id = ?", (pedido, preco, descricao, categoria, item_id))
+        conexao.commit()
+        return f"Item ID {item_id} atualizado para '{pedido}' com preço R${preco:.2f} e descrição '{descricao}' na categoria '{categoria}'."
+    except sqlite3.IntegrityError:
+        return f"Erro: Já existe um item com o nome '{pedido}'."
+    finally:
+        conexao.close()
 
 def deletar_cardapio_admin(item_id):
     conexao = sqlite3.connect(DATABASE_NAME)
@@ -301,13 +304,27 @@ def deletar_cardapio_admin(item_id):
     cursor.execute("DELETE FROM cardapios WHERE id = ?", (item_id,))
     conexao.commit()
     conexao.close()
-    return f"Item {item_id} deletado."
+    return f"Item ID {item_id} deletado do cardápio."
 
 def buscar_clientes_admin():
     conexao = sqlite3.connect(DATABASE_NAME)
     cursor = conexao.cursor()
-    cursor.execute("SELECT id, numero_cliente FROM clientes WHERE is_admin = 0")
+    cursor.execute("SELECT id, numero_cliente, is_admin FROM clientes")
     clientes = cursor.fetchall()
     conexao.close()
-    return [{"id": c[0], "numero_cliente": c[1]} for c in clientes]
+    return [{"id": c[0], "numero_cliente": c[1], "is_admin": bool(c[2])} for c in clientes]
 
+def buscar_cardapio_completo():
+    conexao = sqlite3.connect(DATABASE_NAME)
+    cursor = conexao.cursor()
+    cursor.execute("SELECT categoria, pedido, preco, descricao FROM cardapios ORDER BY categoria, pedido")
+    itens = cursor.fetchall()
+    conexao.close()
+
+    cardapio_organizado = {}
+    for categoria, pedido, preco, descricao in itens:
+        if categoria not in cardapio_organizado:
+            cardapio_organizado[categoria] = []
+        cardapio_organizado[categoria].append({'pedido': pedido, 'preco': float(preco), 'descricao': descricao})
+
+    return cardapio_organizado
