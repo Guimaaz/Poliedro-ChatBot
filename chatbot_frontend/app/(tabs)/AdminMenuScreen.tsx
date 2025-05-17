@@ -1,6 +1,6 @@
 // AdminHomeScreen.tsx
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ScrollView } from 'react-native';
 import { API_BASE_URL } from '../../utils/api';
 import AdminOrderList from './AdminOrderList';
 import AdminMenuList from './AdminMenuList';
@@ -25,7 +25,7 @@ const AdminHomeScreen = () => {
   const [loadingPedidos, setLoadingPedidos] = useState(true);
   const [menuItens, setMenuItens] = useState<MenuItem[]>([]);
   const [loadingMenu, setLoadingMenu] = useState(true);
-  const [exibirPedidos, setExibirPedidos] = useState(true); 
+  const [exibirPedidos, setExibirPedidos] = useState(true);
 
   const carregarPedidos = useCallback(async () => {
     setLoadingPedidos(true);
@@ -86,18 +86,18 @@ const AdminHomeScreen = () => {
           style={[styles.tabButton, exibirPedidos && styles.activeTab]}
           onPress={() => setExibirPedidos(true)}
         >
-          <Text style={styles.tabButtonText}>Pedidos</Text>
+          <Text style={[styles.tabButtonText, exibirPedidos && styles.activeTabText]}>Pedidos</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.tabButton, !exibirPedidos && styles.activeTab]}
           onPress={() => setExibirPedidos(false)}
         >
-          <Text style={styles.tabButtonText}>Cardápio</Text>
+          <Text style={[styles.tabButtonText, !exibirPedidos && styles.activeTabText]}>Cardápio</Text>
         </TouchableOpacity>
       </View>
 
       {exibirPedidos ? (
-        <View>
+        <View style={{ flex: 1 }}>
           <Text style={styles.title}>Pedidos Pendentes</Text>
           {loadingPedidos ? (
             <Text>Carregando pedidos...</Text>
@@ -124,7 +124,7 @@ const AdminHomeScreen = () => {
           />
         </View>
       ) : (
-        <View>
+        <View style={{ flex: 1 }}>
           <Text style={styles.title}>Cardápio</Text>
           {loadingMenu ? (
             <Text>Carregando cardápio...</Text>

@@ -1,9 +1,8 @@
 import sqlite3
 import re
 import difflib
-from server.prompts import *
-from server.cardapio import itensCardapio
 import hashlib
+from server.cardapio import itensCardapio
 
 DATABASE_NAME = "chatbot.db"
 
@@ -149,6 +148,7 @@ def PedidosArmazenados(numero_cliente, pedido):
     return "Pedido registrado com sucesso!"
 
 def removerPedidos(numero_cliente, pedido):
+    conn = None
     try:
         conn = sqlite3.connect(DATABASE_NAME)
         cursor = conn.cursor()
@@ -202,27 +202,18 @@ def VerificarItensCardapio(pedido):
     pedido = pedido.lower()
     conexao = sqlite3.connect(DATABASE_NAME)
     cursor = conexao.cursor()
-    cursor.execute("SELECT pedido FROM cardapios")
-    itens_db = [row[0].lower() for row in cursor.fetchall()]
+    cursor.execute("SELECT pedido, descricao, preco FROM cardapios")
+    itens_db_info = {row[0].lower(): (row[0], row[1], row[2]) for row in cursor.fetchall()}
     conexao.close()
 
-    for item_db in itens_db:
-        if item_db == pedido:
-            conexao = sqlite3.connect(DATABASE_NAME)
-            cursor = conexao.cursor()
-            cursor.execute("SELECT pedido, descricao, preco FROM cardapios WHERE LOWER(pedido) = ?", (pedido,))
-            item_info = cursor.fetchone()
-            conexao.close()
-            return item_info[0], True, item_info[1] if item_info else "", item_info[2] if item_info else 0 # Retorna também a descrição e o preço
+    if pedido in itens_db_info:
+        nome_exato, descricao, preco = itens_db_info[pedido]
+        return nome_exato, True, descricao, preco
 
-    prato_sugerido = difflib.get_close_matches(pedido, itens_db, n=1, cutoff=0.6)
+    prato_sugerido = difflib.get_close_matches(pedido, list(itens_db_info.keys()), n=1, cutoff=0.6)
     if prato_sugerido:
-        conexao = sqlite3.connect(DATABASE_NAME)
-        cursor = conexao.cursor()
-        cursor.execute("SELECT pedido, descricao, preco FROM cardapios WHERE LOWER(pedido) = ?", (prato_sugerido[0],))
-        item_info = cursor.fetchone()
-        conexao.close()
-        return item_info[0], False, item_info[1] if item_info else "", item_info[2] if item_info else 0 # Retorna também a descrição e o preço
+        nome_sugerido, descricao_sugerida, preco_sugerido = itens_db_info[prato_sugerido[0]]
+        return nome_sugerido, False, descricao_sugerida, preco_sugerido
 
     return None, False, "", 0
 

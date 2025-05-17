@@ -100,6 +100,7 @@ const AdminMenuList: React.FC<AdminMenuListProps> = ({ menuItens, onMenuItemUpda
       data={menuItens}
       keyExtractor={(item) => String(item.id)}
       renderItem={renderItem}
+      style={{ flexGrow: 1 }} // Garante que a FlatList cresça dentro do seu container pai
     />
   );
 };

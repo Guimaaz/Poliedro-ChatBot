@@ -1,7 +1,12 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import google.generativeai as genai
-from server.prompts import *
+import re
+import os
+import sqlite3
+from dotenv import load_dotenv
+from pathlib import Path
+from server.prompts import prompt_completo
 from server.BancoPedidos import (
     CreateDatabase,
     PedidosArmazenados,
@@ -20,11 +25,6 @@ from server.BancoPedidos import (
     buscar_clientes_admin,
     buscar_cardapio_completo
 )
-import re
-import os
-import sqlite3
-from dotenv import load_dotenv
-from pathlib import Path
 
 app = Flask(__name__)
 CORS(app)
@@ -110,7 +110,7 @@ def chat():
 
     try:
         if esperando == 'pedido':
-            itemSugerido_verificado, exato, descricao_item = VerificarItensCardapio(user_input)
+            itemSugerido_verificado, exato, descricao_item, preco_item = VerificarItensCardapio(user_input)
 
             if not itemSugerido_verificado:
                 return jsonify({
@@ -123,11 +123,13 @@ def chat():
                 estado_conversa['esperando'] = 'confirmacao_pedido'
                 estado_conversa['item_sugerido'] = itemSugerido_verificado
                 estado_conversa['descricao_sugerida'] = descricao_item
+                estado_conversa['preco_sugerido'] = preco_item
                 return jsonify({
-                    'resposta': f"Você quis dizer '{itemSugerido_verificado}'? ({descricao_item}) (sim/não)",
+                    'resposta': f"Você quis dizer '{itemSugerido_verificado}'? ({descricao_item} - R${preco_item:.2f}) (sim/não)",
                     'esperando': 'confirmacao_pedido',
                     'item_sugerido': itemSugerido_verificado,
                     'descricao_sugerida': descricao_item,
+                    'preco_sugerido': preco_item,
                     'id_conversa': id_conversa
                 })
 
@@ -145,6 +147,7 @@ def chat():
                 estado_conversa['esperando'] = 'adicionar_mais'
                 estado_conversa['item_sugerido'] = None
                 estado_conversa['descricao_sugerida'] = None
+                estado_conversa['preco_sugerido'] = None
                 return jsonify({
                     'resposta': f"'{item_sugerido}' adicionado ao pedido. Deseja adicionar mais alguma coisa? (sim/não)",
                     'esperando': 'adicionar_mais',
@@ -154,6 +157,7 @@ def chat():
                 estado_conversa['esperando'] = 'pedido'
                 estado_conversa['item_sugerido'] = None
                 estado_conversa['descricao_sugerida'] = None
+                estado_conversa['preco_sugerido'] = None
                 return jsonify({
                     'resposta': "Entendido. Por favor, diga novamente o que gostaria de pedir.",
                     'esperando': 'pedido',
@@ -251,7 +255,7 @@ def chat():
                     for categoria, itens in cardapio_db.items():
                         cardapio_texto += f"\n*{categoria}*\n"
                         for item in itens:
-                            cardapio_texto += f"- { item['pedido']} - R${item['preco']:.2f}"
+                            cardapio_texto += f"- {item['pedido']} - R${item['preco']:.2f}"
                             if item['descricao']:
                                 cardapio_texto += f" - {item['descricao']}"
                             cardapio_texto += "\n"

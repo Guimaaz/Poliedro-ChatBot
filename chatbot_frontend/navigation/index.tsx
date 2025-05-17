@@ -5,9 +5,9 @@ import LoginScreen from '../app/(tabs)/LoginScreen';
 import ChatScreen from '../app/(tabs)/chatbotScreen';
 import RegisterScreen from '../app/(tabs)/RegisterScreen';
 import AdminHomeScreen from '../app/(tabs)/AdminMenuScreen';
-import AdminPedidosScreen from '../app/(tabs)/AdminPedidosScreen';
-import AdminCardapioScreen from '../app/(tabs)/AdminCardapioScreen';
-import AdminClientesScreen from '../app/(tabs)/AdminClienteScreen';
+
+
+
 
 const Stack = createNativeStackNavigator();
 
@@ -54,9 +54,9 @@ const AppNavigator = () => {
         <Stack.Screen name="RegisterScreen" component={RegisterScreen} options={{ title: 'Área de Cadastro' }} />
         <Stack.Screen name="ChatScreen" component={ChatScreen} options={{ title: 'Popoli Chat Poliedro' }} />
         <Stack.Screen name="AdminHomeScreen" component={AdminHomeScreen} options={{ title: 'Painel de Administrador' }} />
-        <Stack.Screen name="AdminPedidosScreen" component={AdminPedidosScreen} options={{ title: 'Gerenciar Pedidos' }} />
-        <Stack.Screen name="AdminCardapioScreen" component={AdminCardapioScreen} options={{ title: 'Gerenciar Cardápio' }} />
-        <Stack.Screen name="AdminClientesScreen" component={AdminClientesScreen} options={{ title: 'Clientes Cadastrados' }} />
+        
+     
+    
       </Stack.Navigator>
     </NavigationContainer>
   );
