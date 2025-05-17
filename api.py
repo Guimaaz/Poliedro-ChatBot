@@ -7,24 +7,7 @@ import sqlite3
 from dotenv import load_dotenv
 from pathlib import Path
 from server.prompts import prompt_completo
-from server.BancoPedidos import (
-    CreateDatabase,
-    PedidosArmazenados,
-    BuscarPedidos,
-    finalizar_pedidos_cliente,
-    removerPedidos,
-    VerificarItensCardapio,
-    registrar_cliente,
-    autenticar_cliente,
-    buscar_pedidos_admin,
-    finalizar_pedido_admin,
-    reabrir_pedido_admin,
-    buscar_cardapio_admin,
-    atualizar_cardapio_admin,
-    deletar_cardapio_admin,
-    buscar_clientes_admin,
-    buscar_cardapio_completo
-)
+from server.BancoPedidos import *
 import uuid
 
 app = Flask(__name__)
