@@ -1,4 +1,3 @@
-// app/(tabs)/AdminCardapioScreen.tsx
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, FlatList, TouchableOpacity, TextInput, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';

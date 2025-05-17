@@ -1,4 +1,3 @@
-// app/(tabs)/AdminPedidosScreen.tsx
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, FlatList, TouchableOpacity, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';

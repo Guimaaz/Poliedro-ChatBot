@@ -1,4 +1,3 @@
-// app/(tabs)/AdminClientesScreen.tsx
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, FlatList, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
