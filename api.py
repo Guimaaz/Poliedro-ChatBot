@@ -9,7 +9,8 @@ from server.BancoPedidos import (
     removerPedidos,
     VerificarItensCardapio,
     registrar_cliente,
-    autenticar_cliente
+    autenticar_cliente,
+    AdicionarItemPedido # Importe a nova função
 )
 import re
 import os
@@ -89,10 +90,11 @@ def chat():
 
     # Inicializa o estado da conversa se não existir
     if id_conversa not in conversa_estado:
-        conversa_estado[id_conversa] = {'esperando': None, 'item_sugerido': None, 'pedidos_atuais': None}
+        conversa_estado[id_conversa] = {'esperando': None, 'itens_pedido': [], 'item_sugerido': None, 'pedidos_atuais': None}
 
     estado_conversa = conversa_estado[id_conversa]
     esperando = estado_conversa['esperando']
+    itens_pedido = estado_conversa['itens_pedido']
     item_sugerido = estado_conversa['item_sugerido']
     pedidos_atuais = estado_conversa['pedidos_atuais']
 
@@ -101,44 +103,82 @@ def chat():
             itemSugerido_verificado, exato = VerificarItensCardapio(user_input)
 
             if not itemSugerido_verificado:
-                estado_conversa['esperando'] = None # Sai do estado de 'pedido'
                 return jsonify({
-                    'resposta': "Não entendi o que você gostaria de pedir. Se quiser fazer um pedido, diga 'quero fazer um pedido'.",
+                    'resposta': "Não entendi o que você gostaria de pedir. Por favor, diga o nome exato do item.",
+                    'esperando': 'pedido',
                     'id_conversa': id_conversa
                 })
 
             if not exato:
-                estado_conversa['esperando'] = 'confirmacao'
+                estado_conversa['esperando'] = 'confirmacao_pedido'
                 estado_conversa['item_sugerido'] = itemSugerido_verificado
                 return jsonify({
                     'resposta': f"Você quis dizer '{itemSugerido_verificado}'? (sim/não)",
-                    'esperando': 'confirmacao',
+                    'esperando': 'confirmacao_pedido',
                     'item_sugerido': itemSugerido_verificado,
                     'id_conversa': id_conversa
                 })
 
-            resultado_pedido = PedidosArmazenados(numero_cliente_logado, user_input)
-            estado_conversa['esperando'] = None
-            estado_conversa['item_sugerido'] = None
+            estado_conversa['itens_pedido'].append(itemSugerido_verificado)
+            estado_conversa['esperando'] = 'adicionar_mais'
             return jsonify({
-                'resposta': f"{resultado_pedido}",
+                'resposta': f"'{itemSugerido_verificado}' adicionado ao pedido. Deseja adicionar mais alguma coisa? (sim/não)",
+                'esperando': 'adicionar_mais',
                 'id_conversa': id_conversa
             })
 
-        elif esperando == 'confirmacao':
+        elif esperando == 'confirmacao_pedido':
             if user_input.lower() in ['sim', 's']:
-                resultado_confirmacao = PedidosArmazenados(numero_cliente_logado, item_sugerido)
-                estado_conversa['esperando'] = None
+                estado_conversa['itens_pedido'].append(item_sugerido)
+                estado_conversa['esperando'] = 'adicionar_mais'
                 estado_conversa['item_sugerido'] = None
                 return jsonify({
-                    'resposta': f"{resultado_confirmacao}",
+                    'resposta': f"'{item_sugerido}' adicionado ao pedido. Deseja adicionar mais alguma coisa? (sim/não)",
+                    'esperando': 'adicionar_mais',
                     'id_conversa': id_conversa
                 })
             else:
-                estado_conversa['esperando'] = None # Sai do estado de 'confirmacao'
+                estado_conversa['esperando'] = 'pedido'
                 estado_conversa['item_sugerido'] = None
                 return jsonify({
-                    'resposta': "Entendido. Se quiser fazer um pedido, diga 'quero fazer um pedido'.",
+                    'resposta': "Entendido. Por favor, diga novamente o que gostaria de pedir.",
+                    'esperando': 'pedido',
+                    'id_conversa': id_conversa
+                })
+
+        elif esperando == 'adicionar_mais':
+            if user_input.lower() in ['sim', 's']:
+                estado_conversa['esperando'] = 'pedido'
+                return jsonify({
+                    'resposta': "Certo, o que mais gostaria de adicionar?",
+                    'esperando': 'pedido',
+                    'id_conversa': id_conversa
+                })
+            else:
+                estado_conversa['esperando'] = 'confirmar_finalizar'
+                itens_listados = "\n- ".join(itens_pedido)
+                return jsonify({
+                    'resposta': f"Seu pedido atual é:\n- {itens_listados}\n\nConfirma o pedido? (sim/não)",
+                    'esperando': 'confirmar_finalizar',
+                    'itens_pedido': itens_pedido,
+                    'id_conversa': id_conversa
+                })
+
+        elif esperando == 'confirmar_finalizar':
+            if user_input.lower() in ['sim', 's']:
+                for item in itens_pedido:
+                    PedidosArmazenados(numero_cliente_logado, item)
+                estado_conversa['esperando'] = None
+                estado_conversa['itens_pedido'] = []
+                return jsonify({
+                    'resposta': "Pedido finalizado com sucesso! Obrigado!",
+                    'id_conversa': id_conversa
+                })
+            else:
+                estado_conversa['esperando'] = None
+                estado_conversa['itens_pedido'] = []
+                return jsonify({
+                    'resposta': "Pedido cancelado. Se quiser fazer um novo pedido, diga 'quero fazer um pedido'.",
                     'id_conversa': id_conversa
                 })
 
@@ -161,8 +201,9 @@ def chat():
 
             if intencao == "FAZER_PEDIDO":
                 estado_conversa['esperando'] = 'pedido'
+                estado_conversa['itens_pedido'] = [] # Inicializa a lista de itens do pedido
                 return jsonify({
-                    'resposta': "Certo! Qual será seu pedido?",
+                    'resposta': "Certo! Qual será seu primeiro item?",
                     'esperando': 'pedido',
                     'id_conversa': id_conversa
                 })

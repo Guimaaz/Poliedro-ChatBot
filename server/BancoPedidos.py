@@ -213,5 +213,38 @@ def VerificarItensCardapio(pedido):
 
     return None, False
 
+def AdicionarItemPedido(numero_cliente, item_nome):
+    conexao = sqlite3.connect(DATABASE_NAME)
+    cursor = conexao.cursor()
+
+    cursor.execute("SELECT id FROM clientes WHERE numero_cliente = ?", (numero_cliente,))
+    cliente = cursor.fetchone()
+
+    if not cliente:
+        conexao.close()
+        return "Cliente não encontrado. Por favor, faça login novamente."
+
+    cursor.execute("SELECT id, pedido, preco FROM cardapios WHERE pedido = ?", (item_nome,))
+    item = cursor.fetchone()
+
+    if not item:
+        for p, preco in itensCardapio:
+            if p.lower() == item_nome.lower():
+                cursor.execute("INSERT OR IGNORE INTO cardapios (pedido, preco) VALUES (?, ?)", (p, preco))
+                conexao.commit()
+                cursor.execute("SELECT id, pedido, preco FROM cardapios WHERE pedido = ?", (p,))
+                item = cursor.fetchone()
+                break
+        if not item:
+            conexao.close()
+            return f"Item '{item_nome}' não encontrado no cardápio."
+
+    cursor.execute("INSERT INTO pedidos (numero_cliente, item, item_id, preco) VALUES (?, ?, ?, ?)",
+                    (numero_cliente, item[1], item[0], item[2]))
+
+    conexao.commit()
+    conexao.close()
+    return f"'{item_nome}' adicionado ao seu pedido."
+
 # Garante que o banco e o cardápio sejam criados na inicialização do módulo
 CreateDatabase()
