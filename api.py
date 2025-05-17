@@ -10,7 +10,14 @@ from server.BancoPedidos import (
     VerificarItensCardapio,
     registrar_cliente,
     autenticar_cliente,
-    AdicionarItemPedido # Importe a nova função
+    AdicionarItemPedido,
+    buscar_pedidos_admin,
+    finalizar_pedido_admin,
+    reabrir_pedido_admin,
+    buscar_cardapio_admin,
+    atualizar_cardapio_admin,
+    deletar_cardapio_admin,
+    buscar_clientes_admin
 )
 import re
 import os
@@ -71,9 +78,10 @@ def login():
         print("Erro: Número de telefone e senha são obrigatórios.")
         return jsonify({'success': False, 'message': 'Número de telefone e senha são obrigatórios.'}), 400
 
-    if autenticar_cliente(numero_cliente, senha):
-        print(f"Login bem-sucedido para: {numero_cliente}")
-        return jsonify({'success': True, 'message': 'Login realizado com sucesso!', 'numero_cliente': numero_cliente}), 200
+    senha_correta, is_admin = autenticar_cliente(numero_cliente, senha)
+    if senha_correta:
+        print(f"Login bem-sucedido para: {numero_cliente}, isAdmin: {is_admin}")
+        return jsonify({'success': True, 'message': 'Login realizado com sucesso!', 'numero_cliente': numero_cliente, 'is_admin': is_admin}), 200
     else:
         print(f"Falha no login para: {numero_cliente}")
         return jsonify({'success': False, 'message': 'Credenciais inválidas.'}), 401
@@ -221,8 +229,7 @@ def chat():
                 estado_conversa['esperando'] = 'pedido_remocao'
                 estado_conversa['pedidos_atuais'] = pedidos_atuais_texto
                 if "nenhum pedido" in pedidos_atuais_texto.lower():
-                    return jsonify({
-                        'resposta': "Não encontramos pedidos ativos para este número.",
+                    return jsonify({ 'resposta': "Não encontramos pedidos ativos para este número.",
                         'id_conversa': id_conversa
                     })
                 return jsonify({
@@ -239,63 +246,92 @@ Peixes
 - Bacalhau à Brás - Bacalhau desfiado com batata palha e ovos - 42.50
 - Tilápia Empanada - Servida com purê de batata e salada verde - 28.90
 
-Frango
-- Frango à Parmegiana - Frango empanado com molho de tomate e queijo, acompanhado de arroz e batata frita - 24.90
-- Peito de Frango Grelhado - Acompanha arroz integral e salada mista - 22.50
-- Strogonoff de Frango - Servido com arroz branco e batata palha - 26.00
+Aves
+- Frango à Parmegiana - Filé de frango empanado com queijo e molho de tomate - 24.90
+- Peito de Frango Grelhado - Servido com acompanhamento à sua escolha - 22.50
+- Strogonoff de Frango - Cremoso strogonoff com arroz e batata palha - 26.00
 
 Carnes
-- Picanha na Chapa - Acompanha arroz, feijão tropeiro e vinagrete - 58.90
-- Filé Mignon ao Molho Madeira - Servido com arroz e batata gratinada - 55.00
-- Costela Assada - Acompanha mandioca cozida e salada - 49.90
+- Picanha na Chapa - Suculenta picanha grelhada, acompanha arroz, feijão e farofa - 58.90
+- Filé Mignon ao Molho Madeira - Clássico filé mignon com molho madeira e purê de batata - 55.00
+- Costela Assada - Costela bovina assada lentamente, acompanha mandioca cozida e vinagrete - 49.90
 
 Massas
-- Lasanha Bolonhesa - Camadas de massa, molho de carne e queijo - 32.90
-- Fettuccine Alfredo - Massa com molho cremoso de queijo parmesão - 30.50
-- Nhoque ao Sugo - Massa de batata com molho de tomate fresco - 27.00
+- Lasanha Bolonhesa - Camadas de massa com molho bolonhesa e queijo - 32.90
+- Fettuccine Alfredo - Massa fresca com molho cremoso de queijo parmesão - 30.50
+- Nhoque ao Sugo - Nhoque de batata com molho de tomate caseiro - 27.00
 
-Vegano
-- Risoto de Cogumelos - Arroz cremoso com mix de cogumelos - 34.00
-- Hambúrguer de Grão-de-Bico - Servido com batatas rústicas - 18.90
-- Espaguete de Abobrinha - Com molho ao sugo e manjericão - 20.90
+Vegetarianos
+- Risoto de Cogumelos - Risoto cremoso com variedade de cogumelos frescos - 34.00
+- Hambúrguer de Grão-de-Bico - Hambúrguer artesanal de grão-de-bico, acompanha pão e salada - 18.90
+- Espaguete de Abobrinha - Espaguete de abobrinha com molho pesto e tomate cereja - 20.90
 
 Porções
-- Batata Frita - Porção generosa de batata frita crocante - 10.90
-- Isca de Peixe - Peixe empanado com molho tártaro - 15.50
-- Bolinho de Aipim - Recheado com carne seca - 12.50
+- Batata Frita - Porção de batatas fritas crocantes - 10.90
+- Isca de Peixe - Tiras de peixe empanadas e fritas - 15.50
+- Bolinho de Aipim - Bolinhos de aipim recheados com queijo - 12.50
 
 Sobremesas
-- Pudim de Leite - Tradicional e cremoso - 8.90
-- Torta de Limão - Massa crocante com recheio azedinho - 10.00
-- Brownie com Sorvete - Brownie de chocolate servido com sorvete de creme - 15.90
+- Pudim de Leite - Clássico pudim de leite condensado - 8.90
+- Torta de Limão - Torta cremosa de limão com merengue - 10.00
+- Brownie com Sorvete - Brownie de chocolate com bola de sorvete - 15.90
 
 Saladas
-- Caesar - Alface, croutons, parmesão e molho caesar - 14.90
-- Salada Tropical - Mix de folhas, frutas da época e molho de iogurte - 18.00
-- Salada Caprese - Tomate, muçarela de búfala, manjericão e azeite - 19.00
+- Salada Caesar - Alface romana, croutons, queijo parmesão e molho Caesar - 14.90
+- Salada Tropical - Mix de folhas verdes, frutas da estação e molho agridoce - 18.00
+- Salada Caprese - Tomate, mussarela de búfala e manjericão com azeite balsâmico - 19.00
 
-Qual categoria te interessa mais hoje? 😋"""
-                estado_conversa['esperando'] = None
+O que gostaria de pedir hoje?"""
                 return jsonify({'resposta': cardapio_texto, 'id_conversa': id_conversa})
 
             return jsonify({'resposta': bot_reply, 'id_conversa': id_conversa})
 
     except Exception as e:
-        print(f"Erro na API: {str(e)}")
-        return jsonify({
-            'resposta': "Desculpe, ocorreu um erro. Por favor, tente novamente.",
-            'error': True,
-            'id_conversa': id_conversa
-        })
+        print(f"Erro no chat: {e}")
+        return jsonify({'resposta': "Ocorreu um erro inesperado.", 'error': True, 'id_conversa': id_conversa}), 500
 
-@app.route('/teste', methods=['GET'])
-def teste_conexao():
-    return jsonify({'message': 'Servidor Flask rodando!'}), 200
+# Rotas para o painel de administração
+@app.route('/admin/pedidos', methods=['GET'])
+def admin_listar_pedidos():
+    pedidos = buscar_pedidos_admin()
+    nao_finalizados = [p for p in pedidos if not p['finalizado']]
+    finalizados = [p for p in pedidos if p['finalizado']]
+    return jsonify({'nao_finalizados': nao_finalizados, 'finalizados': finalizados})
+
+@app.route('/admin/pedidos/<int:pedido_id>/finalizar', methods=['POST'])
+def admin_finalizar_pedido(pedido_id):
+    mensagem = finalizar_pedido_admin(pedido_id)
+    return jsonify({'message': mensagem})
+
+@app.route('/admin/pedidos/<int:pedido_id>/reabrir', methods=['POST'])
+def admin_reabrir_pedido(pedido_id):
+    mensagem = reabrir_pedido_admin(pedido_id)
+    return jsonify({'message': mensagem})
+
+@app.route('/admin/cardapio', methods=['GET'])
+def admin_listar_cardapio():
+    cardapio = buscar_cardapio_admin()
+    return jsonify(cardapio)
+
+@app.route('/admin/cardapio/<int:item_id>', methods=['PUT'])
+def admin_atualizar_cardapio(item_id):
+    data = request.json
+    pedido = data.get('pedido')
+    preco = data.get('preco')
+    if pedido is None or preco is None:
+        return jsonify({'error': 'Pedido e preço são obrigatórios'}), 400
+    mensagem = atualizar_cardapio_admin(item_id, pedido, preco)
+    return jsonify({'message': mensagem})
+
+@app.route('/admin/cardapio/<int:item_id>', methods=['DELETE'])
+def admin_deletar_cardapio(item_id):
+    mensagem = deletar_cardapio_admin(item_id)
+    return jsonify({'message': mensagem})
+
+@app.route('/admin/clientes', methods=['GET'])
+def admin_listar_clientes():
+    clientes = buscar_clientes_admin()
+    return jsonify(clientes)
 
 if __name__ == '__main__':
-    try:
-        CreateDatabase()
-    except Exception as e:
-        print(f"Erro ao criar banco de dados: {str(e)}")
-
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(debug=True, host='0.0.0.0', port=5000)

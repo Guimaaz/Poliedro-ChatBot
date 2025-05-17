@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react'; // Importe useEffect
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, SafeAreaView, useWindowDimensions, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
@@ -37,11 +37,21 @@ export default function LoginScreen() {
       console.log('Resposta bruta da API de login:', response);
       const data = await response.json();
       console.log('Dados da resposta da API de login:', data);
+      console.log('Tipo de data.is_admin:', typeof data.is_admin); // VERIFICAR O TIPO
 
       if (response.ok && data.success) {
         await AsyncStorage.setItem('userPhoneNumber', telefone);
         Alert.alert('Sucesso', 'Login realizado com sucesso!');
-        navigation.navigate('ChatScreen');
+
+        console.log('Valor de data.is_admin antes da navegação:', data.is_admin);
+
+        if (data.is_admin === 1) {
+          console.log('Navegando para AdminHomeScreen');
+          navigation.navigate('AdminHomeScreen');
+        } else {
+          console.log('Navegando para ChatScreen');
+          navigation.navigate('ChatScreen');
+        }
       } else {
         Alert.alert('Erro', data.message || 'Falha ao realizar o login. Verifique suas credenciais.');
       }
@@ -56,6 +66,16 @@ export default function LoginScreen() {
   const navigateToRegister = () => {
     navigation.navigate('RegisterScreen');
   };
+
+  // Adicione este useEffect para verificar o AsyncStorage (apenas para depuração)
+  useEffect(() => {
+    const checkPhoneNumber = async () => {
+      const phoneNumber = await AsyncStorage.getItem('userPhoneNumber');
+      console.log('Número de telefone no AsyncStorage:', phoneNumber);
+    };
+
+    checkPhoneNumber();
+  }, []);
 
   return (
     <SafeAreaView style={styles.safeArea}>

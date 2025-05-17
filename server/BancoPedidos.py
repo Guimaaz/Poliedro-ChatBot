@@ -48,41 +48,40 @@ def CreateDatabase():
     )
     ''')
 
-    
     for pedido, preco in itensCardapio:
         try:
-            cursor.execute("INSERT INTO cardapios (pedido, preco) VALUES (?, ?)", (pedido, preco))
+            cursor.execute("INSERT OR IGNORE INTO cardapios (pedido, preco) VALUES (?, ?)", (pedido, preco))
         except sqlite3.IntegrityError:
-            pass 
+            pass
 
     numero_admin = "(11) 97430-6793"
     senha_admin_hash = hash_senha("admin")
     try:
-        cursor.execute("INSERT INTO clientes (numero_cliente, senha, is_admin) VALUES (?, ?, ?)", (numero_admin, senha_admin_hash, 1))
+        cursor.execute("INSERT OR IGNORE INTO clientes (numero_cliente, senha, is_admin) VALUES (?, ?, ?)", (numero_admin, senha_admin_hash, 1))
         conexao.commit()
-        print("Usuário administrador adicionado.")
+        print("Usuário administrador adicionado (ou já existia).")
     except sqlite3.IntegrityError:
-        print("Usuário administrador já existe.")
+        print("Erro ao inserir usuário administrador.")
 
     # usuários teste chumbados
-    numero_teste = "(11) 99999-1111"
-    numero_teste2 = "(11) 97430-6792"
-    numero_teste3 = "(11) 98765-4321"
-    senha_teste_plana = "senha123"
-    senha_teste_plana2 = "Nhe45657"
-    senha_teste_plana3 = "senha123"
-    senha_teste_hash = hash_senha(senha_teste_plana)
-    senha_teste_hash2 = hash_senha(senha_teste_plana2)
-    senha_teste_hash3 = hash_senha(senha_teste_plana3)
+    usuarios_teste = [
+        ("(11) 99999-1111", "senha123"),
+        ("(11) 97430-6792", "Nhe45657"),
+        ("(11) 98765-4321", "senha123")
+    ]
 
-    cursor.execute("INSERT INTO clientes (numero_cliente, senha) VALUES (?, ?)", (numero_teste2, senha_teste_hash2))
-    cursor.execute("INSERT INTO clientes (numero_cliente, senha) VALUES (?, ?)", (numero_teste, senha_teste_hash))
-    cursor.execute("INSERT INTO clientes (numero_cliente, senha) VALUES (?, ?)", (numero_teste3, senha_teste_hash3))
-    conexao.commit()
-
+    for numero, senha_plana in usuarios_teste:
+        senha_hash = hash_senha(senha_plana)
+        try:
+            cursor.execute("INSERT OR IGNORE INTO clientes (numero_cliente, senha) VALUES (?, ?)", (numero, senha_hash))
+            conexao.commit()
+            print(f"Usuário de teste com número {numero} adicionado (ou já existia).")
+        except sqlite3.IntegrityError:
+            print(f"Erro ao inserir usuário de teste com número {numero}.")
 
     conexao.commit()
     conexao.close()
+
 
 def validar_numero(numero_cliente):
     padrao = r"\(\d{2}\) \d{5}-\d{4}"
@@ -312,4 +311,3 @@ def buscar_clientes_admin():
     conexao.close()
     return [{"id": c[0], "numero_cliente": c[1]} for c in clientes]
 
-CreateDatabase()
