@@ -80,71 +80,77 @@ const AdminHomeScreen = () => {
   }, [carregarCardapio]);
 
   return (
-    <View style={styles.container}>
-      <View style={styles.buttonContainer}>
-        <TouchableOpacity
-          style={[styles.tabButton, exibirPedidos && styles.activeTab]}
-          onPress={() => setExibirPedidos(true)}
-        >
-          <Text style={[styles.tabButtonText, exibirPedidos && styles.activeTabText]}>Pedidos</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tabButton, !exibirPedidos && styles.activeTab]}
-          onPress={() => setExibirPedidos(false)}
-        >
-          <Text style={[styles.tabButtonText, !exibirPedidos && styles.activeTabText]}>Cardápio</Text>
-        </TouchableOpacity>
+    <ScrollView style={styles.scrollViewContainer}> {/* Envolvemos tudo em um ScrollView */}
+      <View style={styles.container}>
+        <View style={styles.buttonContainer}>
+          <TouchableOpacity
+            style={[styles.tabButton, exibirPedidos && styles.activeTab]}
+            onPress={() => setExibirPedidos(true)}
+          >
+            <Text style={[styles.tabButtonText, exibirPedidos && styles.activeTabText]}>Pedidos</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tabButton, !exibirPedidos && styles.activeTab]}
+            onPress={() => setExibirPedidos(false)}
+          >
+            <Text style={[styles.tabButtonText, !exibirPedidos && styles.activeTabText]}>Cardápio</Text>
+          </TouchableOpacity>
+        </View>
+
+        {exibirPedidos ? (
+          <View style={{ flex: 1 }}>
+            <Text style={styles.title}>Pedidos Pendentes</Text>
+            {loadingPedidos ? (
+              <Text>Carregando pedidos...</Text>
+            ) : (
+              <View style={{ minHeight: 300 }}> {/* Removi o ScrollView daqui */}
+                <AdminOrderList
+                  pedidosNaoFinalizados={pedidosNaoFinalizados}
+                  onPedidoFinalizado={handlePedidoFinalizado}
+                />
+              </View>
+            )}
+
+            {pedidosFinalizados.length > 0 && (
+              <>
+                <Text style={[styles.title, { marginTop: 10 }]}>Pedidos Finalizados</Text>
+                <FlatList
+                  data={pedidosFinalizados}
+                  keyExtractor={(item) => item.cliente}
+                  renderItem={({ item }) => (
+                    <View style={styles.pedidoItem}>
+                      <Text>Cliente: {item.cliente}</Text>
+                      <Text>Itens:</Text>
+                      <Text>{item.itens}</Text>
+                      <Text>Preço Total: R${item.preco_total.toFixed(2)}</Text>
+                      <Text>Data do Pedido: {item.data_inicio}</Text>
+                      <Text style={{ color: 'green' }}>Finalizado</Text>
+                    </View>
+                  )}
+                />
+              </>
+            )}
+          </View>
+        ) : (
+          <View style={{ flex: 1 }}>
+            <Text style={styles.title}>Cardápio</Text>
+            {loadingMenu ? (
+              <Text>Carregando cardápio...</Text>
+            ) : (
+              <AdminMenuList menuItens={menuItens} onMenuItemUpdated={handleMenuItemUpdated} />
+            )}
+          </View>
+        )}
       </View>
-
-      {exibirPedidos ? (
-        <View style={{ flex: 1 }}>
-          <Text style={styles.title}>Pedidos Pendentes</Text>
-          {loadingPedidos ? (
-            <Text>Carregando pedidos...</Text>
-          ) : (
-            <AdminOrderList
-              pedidosNaoFinalizados={pedidosNaoFinalizados}
-              onPedidoFinalizado={handlePedidoFinalizado}
-            />
-          )}
-
-          {pedidosFinalizados.length > 0 && (
-            <>
-              <Text style={[styles.title, { marginTop: 20 }]}>Pedidos Finalizados</Text>
-              <FlatList
-                data={pedidosFinalizados}
-                keyExtractor={(item) => item.cliente}
-                renderItem={({ item }) => (
-                  <View style={styles.pedidoItem}>
-                    <Text>Cliente: {item.cliente}</Text>
-                    <Text>Itens:</Text>
-                    <Text>{item.itens}</Text>
-                    <Text>Preço Total: R${item.preco_total.toFixed(2)}</Text>
-                    <Text>Data do Pedido: {item.data_inicio}</Text>
-                    <Text style={{ color: 'green' }}>Finalizado</Text>
-                  </View>
-                )}
-              />
-            </>
-          )}
-        </View>
-      ) : (
-        <View style={{ flex: 1 }}>
-          <Text style={styles.title}>Cardápio</Text>
-          {loadingMenu ? (
-            <Text>Carregando cardápio...</Text>
-          ) : (
-            <AdminMenuList menuItens={menuItens} onMenuItemUpdated={handleMenuItemUpdated} />
-          )}
-        </View>
-      )}
-    </View>
+    </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
+  scrollViewContainer: {
+    flex: 1, // Adicione flex: 1 ao ScrollView pai
+  },
   container: {
-    flex: 1,
     padding: 20,
     backgroundColor: '#f5f5f5',
   },
