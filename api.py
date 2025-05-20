@@ -134,7 +134,7 @@ def chat():
             if user_input.lower() in ['sim', 's']:
                 estado_conversa['itens_pedido'].append({'nome': item_sugerido, 'preco': preco_sugerido})
                 estado_conversa['valor_total'] += preco_sugerido
-                estado_conversa['esperando'] = 'adicionar_mais' # Agora espera por mais itens
+                estado_conversa['esperando'] = 'adicionar_mais' 
                 estado_conversa['item_sugerido'] = None
                 estado_conversa['descricao_sugerida'] = None
                 estado_conversa['preco_sugerido'] = None
