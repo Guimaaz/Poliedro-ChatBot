@@ -1,33 +1,37 @@
-import React, { useState, useEffect, useRef } from 'react'; // Importe useRef
+import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, SafeAreaView, useWindowDimensions, Alert } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import { API_BASE_URL } from '../../utils/api';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../navigation';
 
-type LoginScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'LoginScreen'>;
+type RegisterScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'RegisterScreen'>;
 
-export default function LoginScreen() {
+export default function RegisterScreen() {
   const [telefone, setTelefone] = useState('');
   const [senha, setSenha] = useState('');
-  const [loadingLogin, setLoadingLogin] = useState(false);
+  const [confirmarSenha, setConfirmarSenha] = useState('');
+  const [loadingRegister, setLoadingRegister] = useState(false);
   const { width } = useWindowDimensions();
   const inputWidth = width < 600 ? width * 0.7 : 300;
   const containerWidth = width < 600 ? width * 0.9 : 500;
-  const navigation = useNavigation<LoginScreenNavigationProp>();
-  const senhaInputRef = useRef<TextInput>(null); // Cria uma ref para o input de senha
+  const navigation = useNavigation<RegisterScreenNavigationProp>();
 
-  const handleLogin = async () => {
-    if (!telefone || !senha) {
+  const handleRegister = async () => {
+    if (!telefone || !senha || !confirmarSenha) {
       Alert.alert('Erro', 'Por favor, preencha todos os campos.');
       return;
     }
 
-    setLoadingLogin(true);
-    console.log('Fazendo requisição de login...', { numero_cliente: telefone, senha });
+    if (senha !== confirmarSenha) {
+      Alert.alert('Erro', 'As senhas não coincidem.');
+      return;
+    }
+
+    setLoadingRegister(true);
+    console.log('Fazendo requisição de cadastro...', { numero_cliente: telefone, senha });
     try {
-      const response = await fetch(`${API_BASE_URL}/login`, {
+      const response = await fetch(`${API_BASE_URL}/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -35,48 +39,27 @@ export default function LoginScreen() {
         body: JSON.stringify({ numero_cliente: telefone, senha }),
       });
 
-      console.log('Resposta bruta da API de login:', response);
+      console.log('Resposta bruta da API de cadastro:', response);
       const data = await response.json();
-      console.log('Dados da resposta da API de login:', data);
-      console.log('Tipo de data.is_admin:', typeof data.is_admin); // VERIFICAR O TIPO
+      console.log('Dados da resposta da API de cadastro:', data);
 
       if (response.ok && data.success) {
-        await AsyncStorage.setItem('userPhoneNumber', telefone);
-        Alert.alert('Sucesso', 'Login realizado com sucesso!');
-
-        console.log('Valor de data.is_admin antes da navegação:', data.is_admin);
-
-        if (data.is_admin === 1) {
-          console.log('Navegando para AdminHomeScreen');
-          navigation.navigate('AdminHomeScreen');
-        } else {
-          console.log('Navegando para ChatScreen');
-          navigation.navigate('ChatScreen');
-        }
+        Alert.alert('Sucesso', data.message || 'Cadastro realizado com sucesso!');
+        navigation.navigate('LoginScreen');
       } else {
-        Alert.alert('Erro', data.message || 'Falha ao realizar o login. Verifique suas credenciais.');
+        Alert.alert('Erro', data.message || 'Falha ao realizar o cadastro.');
       }
     } catch (error) {
-      console.error('Erro ao realizar login:', error);
+      console.error('Erro ao realizar cadastro:', error);
       Alert.alert('Erro', 'Ocorreu um erro ao comunicar com o servidor.');
     } finally {
-      setLoadingLogin(false);
+      setLoadingRegister(false);
     }
   };
 
-  const navigateToRegister = () => {
-    navigation.navigate('RegisterScreen');
+  const navigateToLogin = () => {
+    navigation.navigate('LoginScreen');
   };
-
-  // Adicione este useEffect para verificar o AsyncStorage (apenas para depuração)
-  useEffect(() => {
-    const checkPhoneNumber = async () => {
-      const phoneNumber = await AsyncStorage.getItem('userPhoneNumber');
-      console.log('Número de telefone no AsyncStorage:', phoneNumber);
-    };
-
-    checkPhoneNumber();
-  }, []);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -89,8 +72,8 @@ export default function LoginScreen() {
           />
         </View>
 
-        <View style={styles.loginContainer}>
-          <Text style={styles.title}>Login</Text>
+        <View style={styles.registerContainer}>
+          <Text style={styles.title}>Cadastro</Text>
 
           <TextInput
             style={[styles.input, { width: inputWidth }]}
@@ -98,27 +81,30 @@ export default function LoginScreen() {
             keyboardType="numbers-and-punctuation"
             value={telefone}
             onChangeText={setTelefone}
-            returnKeyType="next"
-            onSubmitEditing={() => senhaInputRef.current?.focus()} // Move o foco para a senha ao pressionar Enter
           />
 
           <TextInput
-            ref={senhaInputRef} // Define a ref para este TextInput
             style={[styles.input, { width: inputWidth }]}
             placeholder="Senha"
             secureTextEntry
             value={senha}
             onChangeText={setSenha}
-            returnKeyType="done"
-            onSubmitEditing={handleLogin} // Chama handleLogin ao pressionar Enter
           />
 
-          <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={loadingLogin}>
-            <Text style={styles.buttonText}>{loadingLogin ? 'Entrando...' : 'Entrar'}</Text>
+          <TextInput
+            style={[styles.input, { width: inputWidth }]}
+            placeholder="Confirmar Senha"
+            secureTextEntry
+            value={confirmarSenha}
+            onChangeText={setConfirmarSenha}
+          />
+
+          <TouchableOpacity style={styles.button} onPress={handleRegister} disabled={loadingRegister}>
+            <Text style={styles.buttonText}>{loadingRegister ? 'Cadastrando...' : 'Cadastrar'}</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity onPress={navigateToRegister} style={styles.registerLinkContainer}>
-            <Text style={styles.registerLinkText}>Não tem uma conta? Cadastre-se</Text>
+          <TouchableOpacity onPress={navigateToLogin} style={styles.loginLinkContainer}>
+            <Text style={styles.loginLinkText}>Já tem uma conta? Faça login</Text>
           </TouchableOpacity>
         </View>
 
@@ -156,7 +142,7 @@ const styles = StyleSheet.create({
     width: 120,
     height: 50,
   },
-  loginContainer: {
+  registerContainer: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
@@ -166,7 +152,7 @@ const styles = StyleSheet.create({
     fontSize: 28,
     marginBottom: 40,
     color: '#000',
-    
+    fontFamily: "Cal Sans"
   },
   input: {
     height: 50,
@@ -178,7 +164,7 @@ const styles = StyleSheet.create({
   },
   button: {
     width: 150,
-    backgroundColor: '#5497f0',
+    backgroundColor: '#5C75A7',
     paddingVertical: 12,
     borderRadius: 25,
     alignItems: 'center',
@@ -190,12 +176,12 @@ const styles = StyleSheet.create({
   },
   bottomRounded: {
     height: 50,
-    backgroundColor: '#54977',
+    backgroundColor: '#5C75A7',
   },
-  registerLinkContainer: {
+  loginLinkContainer: {
     marginTop: 20,
   },
-  registerLinkText: {
+  loginLinkText: {
     color: '#5C75A7',
     fontSize: 16,
     textDecorationLine: 'underline',
