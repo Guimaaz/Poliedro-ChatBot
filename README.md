@@ -8,7 +8,7 @@ O projeto consiste em um Chatbot movido a API de inteligência artificial para f
 
 ## Autores
 
-- [@Gustavo Guimarães Rodrigues](https://www.github.com/octokatherine) - Desenvolvedor Front-End, Back-End, Estrutação de Banco de Dados, Envoltório de IA (Funilamento de API de IA para fins nichados), API ( Conexão com a IA e requisições entre as Stacks)
+- [@Gustavo Guimarães Rodrigues](https://www.github.com/Guimaaz) - Desenvolvedor Front-End, Back-End, Estrutação de Banco de Dados, Envoltório de IA (Funilamento de API de IA para fins nichados), API ( Conexão com a IA e requisições entre as Stacks)
 
 - [@Guilherme Monte Duarte](https://www.github.com/guimduarte) - Responsável pela documentação do Software e Estruturação de requisitos do Software
 
