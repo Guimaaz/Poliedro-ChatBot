@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'; // Importe useRef
+import React, { useState, useEffect, useRef } from 'react'; 
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, SafeAreaView, useWindowDimensions, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
@@ -16,7 +16,7 @@ export default function LoginScreen() {
   const inputWidth = width < 600 ? width * 0.7 : 300;
   const containerWidth = width < 600 ? width * 0.9 : 500;
   const navigation = useNavigation<LoginScreenNavigationProp>();
-  const senhaInputRef = useRef<TextInput>(null); // Cria uma ref para o input de senha
+  const senhaInputRef = useRef<TextInput>(null); 
 
   const handleLogin = async () => {
     if (!telefone || !senha) {
@@ -38,7 +38,7 @@ export default function LoginScreen() {
       console.log('Resposta bruta da API de login:', response);
       const data = await response.json();
       console.log('Dados da resposta da API de login:', data);
-      console.log('Tipo de data.is_admin:', typeof data.is_admin); // VERIFICAR O TIPO
+      console.log('Tipo de data.is_admin:', typeof data.is_admin); 
 
       if (response.ok && data.success) {
         await AsyncStorage.setItem('userPhoneNumber', telefone);
@@ -68,7 +68,7 @@ export default function LoginScreen() {
     navigation.navigate('RegisterScreen');
   };
 
-  // Adicione este useEffect para verificar o AsyncStorage (apenas para depuração)
+ 
   useEffect(() => {
     const checkPhoneNumber = async () => {
       const phoneNumber = await AsyncStorage.getItem('userPhoneNumber');
@@ -99,18 +99,18 @@ export default function LoginScreen() {
             value={telefone}
             onChangeText={setTelefone}
             returnKeyType="next"
-            onSubmitEditing={() => senhaInputRef.current?.focus()} // Move o foco para a senha ao pressionar Enter
+            onSubmitEditing={() => senhaInputRef.current?.focus()} 
           />
 
           <TextInput
-            ref={senhaInputRef} // Define a ref para este TextInput
+            ref={senhaInputRef}
             style={[styles.input, { width: inputWidth }]}
             placeholder="Senha"
             secureTextEntry
             value={senha}
             onChangeText={setSenha}
             returnKeyType="done"
-            onSubmitEditing={handleLogin} // Chama handleLogin ao pressionar Enter
+            onSubmitEditing={handleLogin} 
           />
 
           <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={loadingLogin}>

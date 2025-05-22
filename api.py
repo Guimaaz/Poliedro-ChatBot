@@ -555,6 +555,7 @@ def chat():
             response = model.generate_content([{"role": "user", "parts": [prompt_completo + user_input]}])
             bot_reply = response.text.strip()
             intencao = extrair_intencao(bot_reply) 
+            intencao = extrair_intencao(bot_reply) 
 
             if not intencao:
                 return jsonify({'resposta': bot_reply, 'id_conversa': id_conversa})

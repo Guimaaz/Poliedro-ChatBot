@@ -257,6 +257,7 @@ def VerificarItensCardapio(pedido):
     conexao = sqlite3.connect(DATABASE_NAME)
     cursor = conexao.cursor()
     cursor.execute("SELECT id, pedido, descricao, preco FROM cardapios")
+    cursor.execute("SELECT id, pedido, descricao, preco FROM cardapios")
     itens_db_info = {}
     for row in cursor.fetchall():
         itens_db_info[row[1].lower()] = (row[0], row[1], row[2], row[3])
@@ -323,10 +324,10 @@ def buscar_pedidos_admin():
             "finalizado": False,
             "pedido_sessao_id": p[6]
         })
-
     pedidos_finalizados_formatados = []
     for p in pedidos_finalizados_db:
         pedidos_finalizados_formatados.append({
+            "id": p[0],
             "id": p[0],
             "cliente": p[1],
             "itens": p[2],
