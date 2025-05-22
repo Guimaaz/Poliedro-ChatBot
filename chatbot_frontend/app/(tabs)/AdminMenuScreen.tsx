@@ -37,11 +37,11 @@ const AdminHomeScreen = () => {
         setPedidosFinalizados(data.finalizados);
       } else {
         console.error('Falha ao carregar pedidos:', response);
-        // Adicione tratamento de erro adequado
+    
       }
     } catch (error) {
       console.error('Erro ao carregar pedidos:', error);
-      // Adicione tratamento de erro adequado
+     
     } finally {
       setLoadingPedidos(false);
     }
@@ -56,11 +56,11 @@ const AdminHomeScreen = () => {
         setMenuItens(data);
       } else {
         console.error('Falha ao carregar cardápio:', response);
-        // Adicione tratamento de erro
+      
       }
     } catch (error) {
       console.error('Erro ao carregar cardápio:', error);
-      // Adicione tratamento de erro
+      
     } finally {
       setLoadingMenu(false);
     }
@@ -72,15 +72,15 @@ const AdminHomeScreen = () => {
   }, [carregarPedidos, carregarCardapio]);
 
   const handlePedidoFinalizado = useCallback(() => {
-    carregarPedidos(); // Recarrega os pedidos após a finalização
+    carregarPedidos(); 
   }, [carregarPedidos]);
 
   const handleMenuItemUpdated = useCallback(() => {
-    carregarCardapio(); // Recarrega o cardápio após a atualização
+    carregarCardapio(); 
   }, [carregarCardapio]);
 
   return (
-    <ScrollView style={styles.scrollViewContainer}> {/* Envolvemos tudo em um ScrollView */}
+    <ScrollView style={styles.scrollViewContainer}> 
       <View style={styles.container}>
         <View style={styles.buttonContainer}>
           <TouchableOpacity
@@ -148,7 +148,7 @@ const AdminHomeScreen = () => {
 
 const styles = StyleSheet.create({
   scrollViewContainer: {
-    flex: 1, // Adicione flex: 1 ao ScrollView pai
+    flex: 1, 
   },
   container: {
     padding: 20,
