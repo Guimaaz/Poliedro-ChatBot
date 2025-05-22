@@ -1,6 +1,7 @@
 import axios from 'axios';
 
-export const API_BASE_URL = 'http://10.2.129.49:5000';
+export const API_BASE_URL = 'https://poliedro-chatbot.onrender.com';
+export default API_BASE_URL;
 
 export const sendMessage = async (messageData) => {
   try {

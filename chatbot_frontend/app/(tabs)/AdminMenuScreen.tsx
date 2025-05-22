@@ -12,12 +12,15 @@ interface PedidoAgrupado {
   data_inicio: string;
   data_fim: string;
   finalizado: boolean;
+  id : String;
 }
 
 interface MenuItem {
   id: number;
   pedido: string;
   preco: number;
+  descricao? : string;
+  categoria? : string;
 }
 
 const AdminHomeScreen = () => {
@@ -104,7 +107,7 @@ const AdminHomeScreen = () => {
             {loadingPedidos ? (
               <Text>Carregando pedidos...</Text>
             ) : (
-              <View style={{ minHeight: 300 }}> {/* Removi o ScrollView daqui */}
+              <View style={{ minHeight: 300 }}> 
                 <AdminOrderList
                   pedidosNaoFinalizados={pedidosNaoFinalizados}
                   onPedidoFinalizado={handlePedidoFinalizado}
