@@ -177,6 +177,7 @@ export default function ChatScreen() {
     <SafeAreaView style={styles.safeArea}>
       <View style={[styles.container, { width: containerWidth }]}>
         <FlatList
+         style={{ flex: 1 }}
           ref={flatListRef}
           data={messages}
           keyExtractor={(item) => item.id}

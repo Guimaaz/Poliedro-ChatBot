@@ -1,6 +1,5 @@
-//testada
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
 import { API_BASE_URL } from '../../utils/api';
 import AdminOrderList from './AdminOrderList';
 import AdminMenuList from './AdminMenuList';
@@ -41,11 +40,9 @@ const AdminHomeScreen = () => {
         setPedidosFinalizados(data.finalizados);
       } else {
         console.error('Falha ao carregar pedidos:', response);
-    
       }
     } catch (error) {
       console.error('Erro ao carregar pedidos:', error);
-     
     } finally {
       setLoadingPedidos(false);
     }
@@ -60,11 +57,9 @@ const AdminHomeScreen = () => {
         setMenuItens(data);
       } else {
         console.error('Falha ao carregar cardápio:', response);
-      
       }
     } catch (error) {
       console.error('Erro ao carregar cardápio:', error);
-      
     } finally {
       setLoadingMenu(false);
     }
@@ -84,8 +79,8 @@ const AdminHomeScreen = () => {
   }, [carregarCardapio]);
 
   return (
-    <ScrollView style={styles.scrollViewContainer}> 
-      <View style={styles.container}>
+    <View style={{ flex: 1 }}> 
+      <View style={[styles.container, { flex: 1 }]}>
         <View style={styles.buttonContainer}>
           <TouchableOpacity
             style={[styles.tabButton, exibirPedidos && styles.activeTab]}
@@ -107,12 +102,11 @@ const AdminHomeScreen = () => {
             {loadingPedidos ? (
               <Text>Carregando pedidos...</Text>
             ) : (
-              <View style={{ minHeight: 300 }}> 
-                <AdminOrderList
-                  pedidosNaoFinalizados={pedidosNaoFinalizados}
-                  onPedidoFinalizado={handlePedidoFinalizado}
-                />
-              </View>
+
+              <AdminOrderList
+                pedidosNaoFinalizados={pedidosNaoFinalizados}
+                onPedidoFinalizado={handlePedidoFinalizado}
+              />
             )}
 
             {pedidosFinalizados.length > 0 && (
@@ -120,6 +114,8 @@ const AdminHomeScreen = () => {
                 <Text style={[styles.title, { marginTop: 10 }]}>Pedidos Finalizados</Text>
                 <FlatList
                   data={pedidosFinalizados}
+                  style={{ flex: 1 }}
+                  contentContainerStyle={{ paddingBottom: 16 }}
                   keyExtractor={(item) => item.cliente}
                   renderItem={({ item }) => (
                     <View style={styles.pedidoItem}>
@@ -141,19 +137,17 @@ const AdminHomeScreen = () => {
             {loadingMenu ? (
               <Text>Carregando cardápio...</Text>
             ) : (
+              // O AdminMenuList já deve retornar uma FlatList com flex: 1
               <AdminMenuList menuItens={menuItens} onMenuItemUpdated={handleMenuItemUpdated} />
             )}
           </View>
         )}
       </View>
-    </ScrollView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  scrollViewContainer: {
-    flex: 1, 
-  },
   container: {
     padding: 20,
     backgroundColor: '#f5f5f5',

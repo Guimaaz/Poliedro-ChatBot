@@ -63,6 +63,7 @@ const AdminOrderList: React.FC<AdminOrderListProps> = ({ pedidosNaoFinalizados, 
 
   return (
     <FlatList
+     style={{ flex: 1 }}
       data={pedidosNaoFinalizados}
       keyExtractor={(item) => item.cliente}
       renderItem={renderItem}
