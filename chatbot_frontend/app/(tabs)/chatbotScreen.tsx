@@ -1,3 +1,4 @@
+//testada
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet, SafeAreaView, useWindowDimensions, Keyboard, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { sendMessage } from '../../utils/api';

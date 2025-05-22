@@ -1,3 +1,4 @@
+//testada
 import React, { useState, useEffect, useRef } from 'react'; 
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, SafeAreaView, useWindowDimensions, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';

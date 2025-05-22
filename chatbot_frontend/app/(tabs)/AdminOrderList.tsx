@@ -1,3 +1,4 @@
+//testada
 import React, { useState } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { API_BASE_URL } from '../../utils/api';
