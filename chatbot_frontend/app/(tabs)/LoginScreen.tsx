@@ -100,7 +100,8 @@ export default function LoginScreen() {
             value={telefone}
             onChangeText={setTelefone}
             returnKeyType="next"
-            onSubmitEditing={() => senhaInputRef.current?.focus()} 
+            onSubmitEditing={() => senhaInputRef.current?.focus()}
+            placeholderTextColor="#000"
           />
 
           <TextInput
@@ -112,6 +113,7 @@ export default function LoginScreen() {
             onChangeText={setSenha}
             returnKeyType="done"
             onSubmitEditing={handleLogin} 
+            placeholderTextColor="#000"
           />
 
           <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={loadingLogin}>
