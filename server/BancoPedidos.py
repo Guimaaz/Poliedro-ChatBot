@@ -3,9 +3,9 @@ import re
 import difflib
 import hashlib
 import uuid
-# from server.cardapio import itensCardapio # Presumo que este arquivo e variável existem
+from server.cardapio import itensCardapio
 import logging
-import datetime # Importar datetime para carimbo de data/hora
+import datetime
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 DATABASE_NAME = "chatbot.db"
@@ -48,58 +48,40 @@ def CreateDatabase():
     preco DECIMAL(10, 2) NOT NULL,
     data TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     finalizado INTEGER DEFAULT 0,
-    pedido_sessao_id TEXT NOT NULL, -- Garante que esta coluna existe e é NOT NULL
+    pedido_sessao_id TEXT NOT NULL,
     FOREIGN KEY (numero_cliente) REFERENCES clientes (numero_cliente),
     FOREIGN KEY (item_id) REFERENCES cardapios (id)
     )
     ''')
 
-    # A verificação e adição da coluna pedido_sessao_id já está no seu código, mantida.
-    # No entanto, a declaração NOT NULL acima já garante que ela será criada se a tabela for nova.
-    # Se a tabela já existir sem NOT NULL, este ALTER TABLE seria necessário.
-    # Para evitar erros em re-execuções, pode-se usar PRAGMA table_info para verificar a existência.
     try:
         cursor.execute("PRAGMA table_info(pedidos)")
         columns = [col[1] for col in cursor.fetchall()]
         if 'pedido_sessao_id' not in columns:
             cursor.execute("ALTER TABLE pedidos ADD COLUMN pedido_sessao_id TEXT")
             conexao.commit()
-            logging.info("Coluna 'pedido_sessao_id' adicionada à tabela 'pedidos'.")
         else:
-            logging.info("Coluna 'pedido_sessao_id' já existe na tabela 'pedidos'.")
+            pass
     except sqlite3.OperationalError as e:
         logging.error(f"Erro ao verificar/adicionar coluna pedido_sessao_id: {e}")
 
-
-    # Inserção de itens do cardápio e usuário admin/teste, mantido como estava.
-    # Removido 'from server.cardapio import itensCardapio' para tornar o arquivo independente
-    # e evitar dependência cíclica ou erro se 'itensCardapio' não for carregado corretamente.
-    # Se você quiser que o cardápio seja populado aqui, adicione itensCardapio diretamente ou importe-o.
-    # Por agora, vou assumir que o cardápio é gerenciado via admin ou que você irá importar 'itensCardapio' separadamente.
-
-    # Exemplo: Adicionar alguns itens de cardápio se não existirem
-    itens_cardapio_exemplo = [
-        ("Strogonoff de Frango", 25.00, "Pratos Principais", "Delicioso strogonoff cremoso com frango"),
-        ("Pudim de Leite Condensado", 10.00, "Sobremesas", "Doce tradicional com calda de caramelo"),
-        ("Salada Caesar", 20.00, "Saladas", "Alface americana, croutons, parmesão e molho caesar"),
-        ("Coca-Cola", 7.00, "Bebidas", "Refrigerante 350ml"),
-        ("Água Mineral", 5.00, "Bebidas", "Garrafa de 500ml")
-    ]
-    for item_info in itens_cardapio_exemplo:
-        pedido, preco, categoria, descricao = item_info
+    for item_info in itensCardapio:
+        pedido = item_info[0] 
+        preco = item_info[1]  
+        categoria = item_info[2] 
+        descricao = item_info[3]
         try:
             cursor.execute("INSERT OR IGNORE INTO cardapios (pedido, preco, categoria, descricao) VALUES (?, ?, ?, ?)", (pedido, preco, categoria, descricao))
         except sqlite3.IntegrityError:
-            pass # Item já existe
+            pass
 
     numero_admin = "(11) 97430-6793"
     senha_admin_hash = hash_senha("admin")
     try:
         cursor.execute("INSERT OR IGNORE INTO clientes (numero_cliente, senha, is_admin) VALUES (?, ?, ?)", (numero_admin, senha_admin_hash, 1))
         conexao.commit()
-        logging.info("Usuário administrador adicionado (ou já existia).")
     except sqlite3.IntegrityError:
-        logging.error("Erro ao inserir usuário administrador.")
+        pass
 
     usuarios_teste = [
         ("(11) 99999-1111", "senha123"),
@@ -112,13 +94,11 @@ def CreateDatabase():
         try:
             cursor.execute("INSERT OR IGNORE INTO clientes (numero_cliente, senha) VALUES (?, ?)", (numero, senha_hash))
             conexao.commit()
-            logging.info(f"Usuário de teste com número {numero} adicionado (ou já existia).")
         except sqlite3.IntegrityError:
-            logging.error(f"Erro ao inserir usuário de teste com número {numero}.")
+            pass
 
     conexao.commit()
     conexao.close()
-
 
 def validar_numero(numero_cliente):
     padrao = r"\(\d{2}\) \d{5}-\d{4}"
@@ -143,42 +123,31 @@ def registrar_cliente(numero_cliente, senha):
 def autenticar_cliente(numero_cliente, senha):
     conexao = sqlite3.connect(DATABASE_NAME)
     cursor = conexao.cursor()
-    logging.info(f"Tentando autenticar cliente: {numero_cliente}")
     cursor.execute("SELECT id, senha, is_admin FROM clientes WHERE numero_cliente = ?", (numero_cliente,))
     resultado = cursor.fetchone()
-    logging.info(f"Resultado da busca no banco: {resultado}")
     conexao.close()
 
     if resultado:
         user_id, senha_hash_db, is_admin = resultado
         senha_correta = verificar_senha(senha, senha_hash_db)
-        logging.info(f"Senha digitada hash: {hash_senha(senha)}")
-        logging.info(f"Senha do banco hash: {senha_hash_db}")
-        logging.info(f"Senha correta: {senha_correta}")
         return senha_correta, is_admin
     return False, 0
-
 
 def PedidosArmazenados(numero_cliente, itens_pedido, valor_total, pedido_sessao_id):
     conexao = None
     try:
         conexao = sqlite3.connect(DATABASE_NAME)
         cursor = conexao.cursor()
-        logging.info(f"Conexão com o banco de dados estabelecida para o cliente: {numero_cliente}, sessão: {pedido_sessao_id}")
 
         cursor.execute("SELECT id FROM clientes WHERE numero_cliente = ?", (numero_cliente,))
         cliente = cursor.fetchone()
 
         if not cliente:
-            logging.warning(f"Cliente não encontrado: {numero_cliente}")
             return "Cliente não encontrado. Por favor, faça login novamente."
-
-        logging.info(f"Cliente encontrado com ID: {cliente[0]}")
 
         for item_info in itens_pedido:
             pedido_nome = item_info['nome']
             preco_item = item_info['preco']
-            logging.info(f"Processando item: {pedido_nome}, preço: {preco_item}")
 
             cursor.execute("SELECT id, pedido FROM cardapios WHERE pedido = ?", (pedido_nome,))
             item_cardapio = cursor.fetchone()
@@ -189,30 +158,24 @@ def PedidosArmazenados(numero_cliente, itens_pedido, valor_total, pedido_sessao_
                     "INSERT INTO pedidos (numero_cliente, item, item_id, preco, pedido_sessao_id) VALUES (?, ?, ?, ?, ?)",
                     (numero_cliente, pedido_nome, item_id, preco_item, pedido_sessao_id)
                 )
-                logging.info(f"Item '{pedido_nome}' inserido no pedido. Item ID: {item_id}")
             else:
-                logging.error(f"Item '{pedido_nome}' não encontrado no cardápio. Rolando de volta.")
                 conexao.rollback()
                 return f"Item '{pedido_nome}' não encontrado no cardápio. Pedido não registrado."
 
         conexao.commit()
-        logging.info(f"Pedido para o cliente {numero_cliente} (sessão {pedido_sessao_id}) registrado com sucesso!")
         return "Pedido registrado com sucesso!"
 
     except sqlite3.Error as e:
-        logging.error(f"Erro de banco de dados ao registrar o pedido: {str(e)}")
         if conexao:
             conexao.rollback()
         return f"Erro ao registrar o pedido: {str(e)}"
     except Exception as e:
-        logging.error(f"Erro inesperado ao registrar o pedido: {str(e)}")
         if conexao:
             conexao.rollback()
         return f"Erro inesperado ao registrar o pedido: {str(e)}"
     finally:
         if conexao:
             conexao.close()
-            logging.info("Conexão com o banco de dados fechada.")
 
 def removerPedidos(numero_cliente, pedido_sessao_id):
     conn = None
@@ -220,7 +183,6 @@ def removerPedidos(numero_cliente, pedido_sessao_id):
         conn = sqlite3.connect(DATABASE_NAME)
         cursor = conn.cursor()
 
-        # Verifica se o pedido existe e não está finalizado antes de tentar remover
         cursor.execute("SELECT id FROM pedidos WHERE numero_cliente = ? AND pedido_sessao_id = ? AND finalizado = 0",
                        (numero_cliente, pedido_sessao_id))
         if not cursor.fetchone():
@@ -252,8 +214,6 @@ def BuscarPedidos(numero_cliente):
         conexao.close()
         return "Cliente não encontrado. Por favor, faça login novamente."
 
-    # Adicionado WHERE finalizado = 0 para buscar apenas pedidos não finalizados para o usuário
-    # E selecionando o id interno do pedido para o admin (se necessário no futuro)
     cursor.execute('''
         SELECT p.id, p.item, p.preco, datetime(p.data, '-3 hours'), p.pedido_sessao_id
         FROM pedidos p
@@ -268,10 +228,10 @@ def BuscarPedidos(numero_cliente):
         return "Nenhum pedido ativo encontrado para esse número."
 
     pedidos_formatados = {}
-    for p_id, item, preco, data, sessao_id in pedidos: # Agora pegando o p_id
+    for p_id, item, preco, data, sessao_id in pedidos:
         if sessao_id not in pedidos_formatados:
             pedidos_formatados[sessao_id] = {
-                "id_interno": p_id, # Armazenando o ID interno do primeiro item do grupo
+                "id_interno": p_id,
                 "itens": [],
                 "data_primeiro_item": data,
                 "data_ultimo_item": data,
@@ -285,7 +245,7 @@ def BuscarPedidos(numero_cliente):
     resposta = ""
     for sessao_id, info in pedidos_formatados.items():
         itens_str = "\n- ".join(info["itens"])
-        resposta += f"**Pedido ID:** {sessao_id} (Ref. Admin: {info['id_interno']})\n" # Exibindo ID interno para debug
+        resposta += f"**Pedido ID:** {sessao_id}\n"
         resposta += f"**Itens:**\n- {itens_str}\n"
         resposta += f"**Valor Total:** R${info['valor_total']:.2f}\n"
         resposta += f"**Data do Pedido:** {info['data_primeiro_item']}\n\n"
@@ -293,37 +253,33 @@ def BuscarPedidos(numero_cliente):
     return resposta.strip() if resposta else "Nenhum pedido ativo encontrado para esse número."
 
 def VerificarItensCardapio(pedido):
-    pedido_lower = pedido.lower() # Converter para lowercase apenas uma vez
+    pedido_lower = pedido.lower()
     conexao = sqlite3.connect(DATABASE_NAME)
     cursor = conexao.cursor()
-    cursor.execute("SELECT id, pedido, descricao, preco FROM cardapios") # Selecionar o ID também
+    cursor.execute("SELECT id, pedido, descricao, preco FROM cardapios")
     itens_db_info = {}
     for row in cursor.fetchall():
-        itens_db_info[row[1].lower()] = (row[0], row[1], row[2], row[3]) # Armazena (id, nome_exato, descricao, preco)
+        itens_db_info[row[1].lower()] = (row[0], row[1], row[2], row[3])
     conexao.close()
 
-    # Tentar correspondência exata primeiro
     if pedido_lower in itens_db_info:
         item_id, nome_exato, descricao, preco = itens_db_info[pedido_lower]
-        return nome_exato, True, descricao, preco # Retorna o nome_exato do banco, e o resto
+        return nome_exato, True, descricao, preco
 
-    # Se não houver correspondência exata, procurar similar
-    prato_sugerido_key = difflib.get_close_matches(pedido_lower, list(itens_db_info.keys()), n=1, cutoff=0.7) # Aumentei o cutoff para 0.7
+    prato_sugerido_key = difflib.get_close_matches(pedido_lower, list(itens_db_info.keys()), n=1, cutoff=0.7)
     if prato_sugerido_key:
         item_id, nome_sugerido, descricao_sugerida, preco_sugerido = itens_db_info[prato_sugerido_key[0]]
         return nome_sugerido, False, descricao_sugerida, preco_sugerido
 
-    return None, False, "", 0.0 # Alterei para 0.0 para consistência com tipo float
-
+    return None, False, "", 0.0
 
 def buscar_pedidos_admin():
     conexao = sqlite3.connect(DATABASE_NAME)
     cursor = conexao.cursor()
     
-    # Query para pedidos não finalizados, agrupados por pedido_sessao_id
     cursor.execute('''
         SELECT 
-            MIN(p.id) as id_interno_primeiro_item, -- Pegar o ID interno de um dos itens para referência
+            MIN(p.id) as id_interno_primeiro_item,
             p.numero_cliente, 
             GROUP_CONCAT(p.item || ' (R$' || p.preco || ')', '\n- ') AS itens, 
             SUM(p.preco) AS total_pedido, 
@@ -337,7 +293,6 @@ def buscar_pedidos_admin():
     ''')
     pedidos_pendentes_db = cursor.fetchall()
 
-    # Query para pedidos finalizados, agrupados por pedido_sessao_id
     cursor.execute('''
         SELECT 
             MIN(p.id) as id_interno_primeiro_item,
@@ -359,20 +314,20 @@ def buscar_pedidos_admin():
     pedidos_pendentes_formatados = []
     for p in pedidos_pendentes_db:
         pedidos_pendentes_formatados.append({
-            "id": p[0], # O ID interno do primeiro item do grupo, para identificação única do agrupamento
+            "id": p[0],
             "cliente": p[1],
-            "itens": p[2], # Já é a string formatada
+            "itens": p[2],
             "preco_total": float(p[3]),
             "data_inicio": p[4],
             "data_fim": p[5],
             "finalizado": False,
-            "pedido_sessao_id": p[6] # Este é o UUID que o cliente vê
+            "pedido_sessao_id": p[6]
         })
 
     pedidos_finalizados_formatados = []
     for p in pedidos_finalizados_db:
         pedidos_finalizados_formatados.append({
-            "id": p[0], # O ID interno do primeiro item do grupo
+            "id": p[0],
             "cliente": p[1],
             "itens": p[2],
             "preco_total": float(p[3]),
@@ -384,11 +339,9 @@ def buscar_pedidos_admin():
 
     return {"nao_finalizados": pedidos_pendentes_formatados, "finalizados": pedidos_finalizados_formatados}
 
-# Esta função DEVE ser usada para finalizar um pedido específico no admin
 def finalizar_pedido_admin(pedido_sessao_id):
     conexao = sqlite3.connect(DATABASE_NAME)
     cursor = conexao.cursor()
-    # Atualiza o status de todos os itens associados a este pedido_sessao_id
     cursor.execute("UPDATE pedidos SET finalizado = 1 WHERE pedido_sessao_id = ? AND finalizado = 0", (pedido_sessao_id,))
     conexao.commit()
     registros_alterados = cursor.rowcount
@@ -396,14 +349,11 @@ def finalizar_pedido_admin(pedido_sessao_id):
     if registros_alterados > 0:
         return f"Pedido com ID {pedido_sessao_id} finalizado."
     else:
-        # Se nenhum registro foi alterado, pode ser que o pedido já esteja finalizado ou não exista
         return f"Nenhum pedido pendente encontrado com o ID {pedido_sessao_id} para finalizar."
 
-# Esta função DEVE ser usada para reabrir um pedido específico no admin
 def reabrir_pedido_admin(pedido_sessao_id):
     conexao = sqlite3.connect(DATABASE_NAME)
     cursor = conexao.cursor()
-    # Atualiza o status de todos os itens associados a este pedido_sessao_id para 0 (não finalizado)
     cursor.execute("UPDATE pedidos SET finalizado = 0 WHERE pedido_sessao_id = ? AND finalizado = 1", (pedido_sessao_id,))
     conexao.commit()
     registros_alterados = cursor.rowcount
@@ -413,8 +363,6 @@ def reabrir_pedido_admin(pedido_sessao_id):
     else:
         return f"Nenhum pedido finalizado encontrado com o ID {pedido_sessao_id} para reabrir."
 
-# Esta função serve para finalizar TODOS os pedidos pendentes de UM determinado cliente.
-# Mantenha-a se for uma funcionalidade desejada, mas não a use no botão de finalizar pedido individual.
 def finalizar_pedidos_cliente(numero_cliente):
     conexao = sqlite3.connect(DATABASE_NAME)
     cursor = conexao.cursor()
@@ -426,7 +374,6 @@ def finalizar_pedidos_cliente(numero_cliente):
         return {"message": f"Todos os pedidos pendentes para o cliente {numero_cliente} foram finalizados."}
     else:
         return {"message": f"Não há pedidos pendentes para o cliente {numero_cliente}."}
-
 
 def buscar_cardapio_admin():
     conexao = sqlite3.connect(DATABASE_NAME)
@@ -444,6 +391,20 @@ def buscar_cardapio_admin():
             "descricao": item[4]
         })
     return cardapio_lista
+
+def adicionar_item_cardapio_admin(pedido, preco, descricao, categoria):
+    conn = sqlite3.connect(DATABASE_NAME)
+    cursor = conn.cursor()
+    try:
+        cursor.execute("INSERT INTO cardapios (pedido, preco, descricao, categoria) VALUES (?, ?, ?, ?)", (pedido, preco, descricao, categoria))
+        conn.commit()
+        return "Item adicionado ao cardápio com sucesso!"
+    except sqlite3.IntegrityError:
+        return "Já existe um item com este nome no cardápio."
+    except Exception as e:
+        return f"Erro ao adicionar item: {str(e)}"
+    finally:
+        conn.close()
 
 def atualizar_cardapio_admin(item_id, pedido, preco, descricao, categoria):
     conexao = sqlite3.connect(DATABASE_NAME)
@@ -487,7 +448,7 @@ def buscar_clientes_admin():
         })
     return clientes_lista
 
-def buscar_cardapio_completo():
+def Cardapio_banco():
     conexao = sqlite3.connect(DATABASE_NAME)
     cursor = conexao.cursor()
     cursor.execute("SELECT pedido, preco, categoria, descricao FROM cardapios ORDER BY categoria, pedido")
