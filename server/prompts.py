@@ -122,57 +122,6 @@ Salada Caprese - Tomate, muçarela de búfala, manjericão e azeite
 
 
 
-prompt_do_preco = """
-Os preços dos itens do cardápio serão buscados diretamente do banco de dados. Use este prompt apenas como referência de formato.
-
-Peixes
-
-Filé de Salmão Grelhado - Acompanha arroz e legumes salteados - [PREÇO]
-Bacalhau à Brás - Bacalhau desfiado com batata palha e ovos - [PREÇO]
-Tilápia Empanada - Servida com purê de batata e salada verde - [PREÇO]
-
-Frango
-
-Frango à Parmegiana - Frango empanado com molho de tomate e queijo, acompanhado de arroz e batata frita - [PREÇO]
-Peito de Frango Grelhado - Acompanha arroz integral e salada mista - [PREÇO]
-Strogonoff de Frango - Servido com arroz branco e batata palha - [PREÇO]
-
-Carnes
-
-Picanha na Chapa - Acompanha arroz, feijão tropeiro e vinagrete - [PREÇO]
-Filé Mignon ao Molho Madeira - Servido com arroz e batata gratinada - [PREÇO]
-Costela Assada - Acompanha mandioca cozida e salada - [PREÇO]
-
-Massas
-
-Lasanha Bolonhesa - Camadas de massa, molho de carne e queijo - [PREÇO]
-Fettuccine Alfredo - Massa com molho cremoso de queijo parmesão - [PREÇO]
-Nhoque ao Sugo - Massa de batata com molho de tomate fresco - [PREÇO]
-
-Vegano
-
-Risoto de Cogumelos - Arroz cremoso com mix de cogumelos - [PREÇO]
-Hambúrguer de Grão-de-Bico - Servido com batatas rústicas - [PREÇO]
-Espaguete de Abobrinha - Com molho ao sugo e manjericão - [PREÇO]
-
-Porções
-
-Batata Frita - Porção generosa de batata frita crocante - [PREÇO]
-Isca de Peixe - Peixe empanado com molho tártaro - [PREÇO]
-Bolinho de Aipim - Recheado com carne seca - [PREÇO]
-
-Sobremesas
-
-Pudim de Leite - Tradicional e cremoso - [PREÇO]
-Torta de Limão - Massa crocante com recheio azedinho - [PREÇO]
-Brownie com Sorvete - Brownie de chocolate servido com sorvete de creme - [PREÇO]
-
-Saladas
-
-Salada Caesar - Alface, croutons, parmesão e molho caesar - [PREÇO]
-Salada Tropical - Mix de folhas, frutas da época e molho de iogurte - [PREÇO]
-Salada Caprese - Tomate, muçarela de búfala, manjericão e azeite - [PREÇO]
-"""
 
 prompt_intencao = """
 Sua tarefa é identificar a intenção da mensagem do cliente. Existem quatro intenções principais:
@@ -189,7 +138,6 @@ prompt_completo = (
     prompt_restaurante
     + prompt_dos_Horarios
     + prompt_do_Cardapio
-    + prompt_do_preco
     + prompt_intencao
     + "\n\nBaseado na conversa acima, identifique a intenção do usuário.\n"
     "Se o usuário deseja fazer um pedido, responda com: INTENÇÃO: FAZER_PEDIDO\n"
