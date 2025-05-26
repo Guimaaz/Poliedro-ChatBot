@@ -1,4 +1,3 @@
-#testada
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import google.generativeai as genai
@@ -8,8 +7,8 @@ import sqlite3
 from dotenv import load_dotenv
 from pathlib import Path
 from server.prompts import prompt_completo 
-from server.BancoPedidos import * 
-import uuid
+from server.BancoPedidos import *
+import uuid 
 import difflib 
 
 app = Flask(__name__)
@@ -24,19 +23,17 @@ CreateDatabase()
 Fluxo_conversa = {}
 
 def extrair_intencao(texto):
-    if re.search(r'\b(cardapio|menu|o que tem para comer|comida|bebida)\b', texto, re.IGNORECASE):
-        return "VER_CARDAPIO"
-    
-    
-    if re.search(r'\b(quero comer|fazer pedido|pedir|gostaria de pedir|fome|pedir um|pedir uma)\b', texto, re.IGNORECASE):
-        return "FAZER_PEDIDO_GENERICO"
-
     match_pedido = re.search(r'INTENÇÃO:\s*(FAZER_PEDIDO|CONSULTAR_PEDIDO|REMOVER_PEDIDO|OUTRA)', texto, re.IGNORECASE)
     if match_pedido:
         return match_pedido.group(1).upper()
+    if re.search(r'\b(cardapio|menu|o que tem para comer|comida|bebida)\b', texto, re.IGNORECASE):
+        return "VER_CARDAPIO"
+    if re.search(r'\b(quero comer|fazer pedido|pedir|gostaria de pedir|fome|pedir um|pedir uma)\b', texto, re.IGNORECASE):
+        return "FAZER_PEDIDO_GENERICO"
+    
     return None
 
-def comparacao_string(texto):
+def string_comparação(texto):
     return re.sub(r'[^\w\s]', '', texto).strip().lower()
 
 
@@ -47,15 +44,15 @@ def Multiplos_pedidos(user_input):
     """
     itens_input = []
     filtrar_itens_input = re.sub(r'\s+e\s+|\s*,\s*', ' DIVISOR ', user_input.lower())
-    desconsiderar = ["quero", "um", "uma", "me ve", "me vê", "pedir", "gostaria de", "por favor", "adicionar", "adicione", "e", "com", "favor"]
-    variavel_q_descondera = r'\b(?:' + '|'.join(map(re.escape, desconsiderar)) + r')\b'  
-    filtrar_itens_input = re.sub(variavel_q_descondera, '', filtrar_itens_input).strip()
-    pedido_emSi = [p.strip() for p in filtrar_itens_input.split(' DIVISOR ') if p.strip()]
+    palavras_irrelevantes = ["quero", "um", "uma", "me ve", "me vê", "pedir", "gostaria de", "por favor", "adicionar", "adicione", "e", "com", "favor"]
+    desconsiderar = r'\b(?:' + '|'.join(map(re.escape, palavras_irrelevantes)) + r')\b'  
+    filtrar_itens_input = re.sub(desconsiderar, '', filtrar_itens_input).strip()
+    pedido_em_si = [p.strip() for p in filtrar_itens_input.split(' DIVISOR ') if p.strip()]
     
-    for parte in pedido_emSi:
-        item_separado = comparacao_string(parte)
-        if item_separado:
-            itens_input.append(item_separado)
+    for parte in pedido_em_si:
+        pedido_separado = string_comparação(parte)
+        if pedido_separado:
+            itens_input.append(pedido_separado)
             
     itens_adicionados_sucesso = []
     itens_nao_encontrados = []
@@ -65,20 +62,20 @@ def Multiplos_pedidos(user_input):
     for categoria_itens in cardapio_completo.values():
         for item in categoria_itens:
             cardapio_banco.append({
-                'pedido_original': item['pedido'],
-                'Nome_item': comparacao_string(item['pedido']),
+                'nome_original': item['pedido'],
+                'nome_limpo': string_comparação(item['pedido']),
                 'descricao': item['descricao'],
                 'preco': item['preco']
             })
     
-    nome_cardapio_juncao = [item['Nome_item'] for item in cardapio_banco]
+    nome_cardapio_juncao = [item['nome_limpo'] for item in cardapio_banco]
 
     for item_input_filtrado in itens_input:
         encontrado_diretamente = False
         for card_item in cardapio_banco:
-            if card_item['Nome_item'] == item_input_filtrado:
+            if card_item['nome_limpo'] == item_input_filtrado:
                 itens_adicionados_sucesso.append({
-                    'nome': card_item['pedido_original'],
+                    'nome': card_item['nome_original'],
                     'preco': card_item['preco'],
                     'descricao': card_item['descricao']
                 })
@@ -91,11 +88,11 @@ def Multiplos_pedidos(user_input):
             if sugestoes_difflib:
                 nome_sugerido_limpo = sugestoes_difflib[0]
                 for card_item in cardapio_banco:
-                    if card_item['Nome_item'] == nome_sugerido_limpo:
-                        if not any(s['nome'] == card_item['pedido_original'] for s in itens_sugeridos):
+                    if card_item['nome_limpo'] == nome_sugerido_limpo:
+                        if not any(s['nome'] == card_item['nome_original'] for s in itens_sugeridos):
                             itens_sugeridos.append({
-                                'pedido_original_input': item_input_filtrado, 
-                                'nome': card_item['pedido_original'],
+                                'nome_original_input': item_input_filtrado, 
+                                'nome': card_item['nome_original'],
                                 'preco': card_item['preco'],
                                 'descricao': card_item['descricao']
                             })
@@ -196,12 +193,14 @@ def chat():
             if itens_sugeridos_raw:
                 estado_conversa['sugestoes_pendentes'] = itens_sugeridos_raw
                 nomes_sugeridos = [item['nome'] for item in itens_sugeridos_raw]
-                estado_conversa['esperando'] = 'esperando_pedido_multiplo'
+            
+                estado_conversa['esperando'] = 'awaiting_multiple_item_confirmation'
                 
                 resposta_final = "Encontrei as seguintes sugestões para o que você pediu:\n"
                 for sug in itens_sugeridos_raw:
-                    resposta_final += f"- Você quis dizer '{sug['nome']}' para '{sug['pedido_original_input']}'? (sim/não)\n"
+                    resposta_final += f"- Você quis dizer '{sug['nome']}' para '{sug['nome_original_input']}'? (sim/não)\n"
                 resposta_final += "\nPor favor, diga o nome exato do item para adicionar ou 'não' para ignorar as sugestões."
+
                 estado_conversa['itens_pedido'] = itens_pedido 
                 estado_conversa['valor_total'] = valor_total 
 
@@ -217,7 +216,7 @@ def chat():
 
             if not itens_adicionados_raw and not itens_sugeridos_raw and not itens_nao_encontrados:
                 resposta_final = "Não entendi o que você gostaria de pedir. Por favor, diga o nome exato do(s) item(ns)."
-                estado_conversa['esperando'] = 'pedido' 
+                estado_conversa['esperando'] = 'pedido'
             else:
                 resposta_final = " ".join(resposta_partes).strip() + f"\n\nDeseja adicionar mais alguma coisa? (sim/não/remover/finalizar)"
                 estado_conversa['esperando'] = 'adicionar_mais' 
@@ -232,7 +231,7 @@ def chat():
                 'itens_pedido_atual': [{'nome': item['nome'], 'preco': item['preco']} for item in itens_pedido]
             })
         
-        elif esperando == 'esperando_pedido_multiplo':
+        elif esperando == 'awaiting_multiple_item_confirmation':
             sugestoes_pendentes = estado_conversa['sugestoes_pendentes']
             
             if not sugestoes_pendentes:
@@ -244,9 +243,9 @@ def chat():
                     'itens_pedido_atual': [{'nome': item['nome'], 'preco': item['preco']} for item in itens_pedido]
                 })
 
-            user_response_lower = comparacao_string(user_input)
+            user_response_lower = string_comparação(user_input)
             
-            found_and_added = False
+            achou_e_adicionou = False
             
             if user_response_lower == "não" or user_response_lower == "nao":
                 estado_conversa['sugestoes_pendentes'] = []
@@ -254,16 +253,16 @@ def chat():
                 estado_conversa['esperando'] = 'adicionar_mais'
             else:
                 for sug in sugestoes_pendentes:
-                    if comparacao_string(sug['nome']) == user_response_lower:
+                    if string_comparação(sug['nome']) == user_response_lower:
                         itens_pedido.append({'nome': sug['nome'], 'preco': sug['preco']})
                         estado_conversa['valor_total'] += sug['preco'] 
-                        found_and_added = True
+                        achou_e_adicionou = True
                         response_message = f"'{sug['nome']}' adicionado ao seu pedido."
                         break
                 
-                if found_and_added:
+                if achou_e_adicionou:
                     estado_conversa['sugestoes_pendentes'] = [
-                        s for s in sugestoes_pendentes if comparacao_string(s['nome']) != user_response_lower
+                        s for s in sugestoes_pendentes if string_comparação(s['nome']) != user_response_lower
                     ]
                     
                     if not estado_conversa['sugestoes_pendentes']:
@@ -272,13 +271,14 @@ def chat():
                     else:
                         response_message += "\n\nMais sugestões pendentes:\n"
                         for s in estado_conversa['sugestoes_pendentes']:
-                            response_message += f"- Você quis dizer '{s['nome']}' para '{s['pedido_original_input']}'? (sim/não)\n"
+                            response_message += f"- Você quis dizer '{s['nome']}' para '{s['nome_original_input']}'? (sim/não)\n"
                         response_message += "\nPor favor, diga o nome exato do item para adicionar ou 'não' para ignorar as sugestões."
 
                 else:
                     response_message = "Não entendi sua resposta ou o item não corresponde a uma das sugestões. Por favor, diga o nome exato do item sugerido ou 'não' para ignorar as sugestões.\n\nSugestões pendentes:\n"
                     for s in sugestoes_pendentes:
-                        response_message += f"- Você quis dizer '{s['nome']}' para '{s['pedido_original_input']}'? (sim/não)\n"
+                        response_message += f"- Você quis dizer '{s['nome']}' para '{s['nome_original_input']}'? (sim/não)\n"
+            
             estado_conversa['itens_pedido'] = itens_pedido
             if estado_conversa['esperando'] == 'adicionar_mais':
                  response_message += f"\n\nSeu pedido atual:\n"
@@ -443,11 +443,11 @@ def chat():
                 })
 
         elif esperando == 'remover_item':
-            item_para_remover = comparacao_string(user_input)
+            item_para_remover = string_comparação(user_input)
             removido = False
             indice_para_remover = -1
             for i in range(len(estado_conversa['itens_pedido']) -1, -1, -1):
-                if comparacao_string(estado_conversa['itens_pedido'][i]['nome']) == item_para_remover:
+                if string_comparação(estado_conversa['itens_pedido'][i]['nome']) == item_para_remover:
                     removido = True
                     indice_para_remover = i
                     break
@@ -554,12 +554,12 @@ def chat():
                         'id_conversa': id_conversa
                     })    
             response = model.generate_content([{"role": "user", "parts": [prompt_completo + user_input]}])
-            bot_reply = response.text.strip()
-            intencao = extrair_intencao(bot_reply) 
-            intencao = extrair_intencao(bot_reply) 
-
+            bot_reply_raw = response.text.strip() 
+            bot_reply_cleaned = re.sub(r'INTENÇÃO:\s*([A-Z_]+)\s*', '', bot_reply_raw, flags=re.IGNORECASE).strip()
+            
+            intencao = extrair_intencao(bot_reply_raw) 
             if not intencao:
-                return jsonify({'resposta': bot_reply, 'id_conversa': id_conversa})
+                return jsonify({'resposta': bot_reply_cleaned, 'id_conversa': id_conversa})
 
             if intencao == "FAZER_PEDIDO":
                 estado_conversa['esperando'] = 'pedido'
@@ -611,8 +611,7 @@ def chat():
                 else:
                     estado_conversa['ofereceu_cardapio_antes_de_pedir'] = False
                     return jsonify({'resposta': "O cardapio está vazio no momento.", 'id_conversa': id_conversa})
-
-            return jsonify({'resposta': bot_reply, 'id_conversa': id_conversa})
+            return jsonify({'resposta': bot_reply_cleaned, 'id_conversa': id_conversa})
 
     except Exception as e:
         print(f"Erro no chat: {e}")
