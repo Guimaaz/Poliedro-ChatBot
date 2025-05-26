@@ -26,7 +26,7 @@ def extrair_intencao(texto):
     match_pedido = re.search(r'INTENÇÃO:\s*(FAZER_PEDIDO|CONSULTAR_PEDIDO|REMOVER_PEDIDO|OUTRA)', texto, re.IGNORECASE)
     if match_pedido:
         return match_pedido.group(1).upper()
-    if re.search(r'\b(cardapio|menu|o que tem para comer|comida|bebida)\b', texto, re.IGNORECASE):
+    if re.search(r'\b(cardapio|menu|exibir|exiba|o que tem para comer|comida|bebida)\b', texto, re.IGNORECASE):
         return "VER_CARDAPIO"
     if re.search(r'\b(quero comer|fazer pedido|pedir|gostaria de pedir|fome|pedir um|pedir uma)\b', texto, re.IGNORECASE):
         return "FAZER_PEDIDO_GENERICO"
