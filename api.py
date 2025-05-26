@@ -236,57 +236,66 @@ def chat():
             
             if not sugestoes_pendentes:
                 estado_conversa['esperando'] = 'adicionar_mais'
+                response_message = "Não há mais sugestões pendentes para processar."
+                if itens_pedido:
+                    response_message += f"\n\nSeu pedido atual:\n"
+                    for item in itens_pedido:
+                        response_message += f"- {item['nome']} (R${item['preco']:.2f})\n"
+                    response_message += f"Valor total: R${valor_total:.2f}\n"
+                response_message += "Deseja adicionar mais alguma coisa? (sim/não/remover/finalizar)"
+                
                 return jsonify({
-                    'resposta': "Não há sugestões pendentes para processar. Deseja adicionar mais alguma coisa? (sim/não/remover/finalizar)",
+                    'resposta': response_message,
                     'esperando': 'adicionar_mais',
                     'id_conversa': id_conversa,
                     'itens_pedido_atual': [{'nome': item['nome'], 'preco': item['preco']} for item in itens_pedido]
                 })
 
-            user_response_lower = string_comparação(user_input)
+            user_input_lower = string_comparação(user_input)
+            response_message = ""
             
-            achou_e_adicionou = False
-            
-            if user_response_lower == "não" or user_response_lower == "nao":
-                estado_conversa['sugestoes_pendentes'] = []
-                response_message = "Sugestões ignoradas."
-                estado_conversa['esperando'] = 'adicionar_mais'
+         
+            if user_input_lower == "não" or user_input_lower == "nao":
+                sugestao_ignorada = sugestoes_pendentes.pop(0) 
+                response_message = f"'{sugestao_ignorada['nome']}' ignorado."
+            elif user_input_lower == "sim":
+                sugestao_confirmada = sugestoes_pendentes.pop(0)
+                itens_pedido.append({'nome': sugestao_confirmada['nome'], 'preco': sugestao_confirmada['preco']})
+                estado_conversa['valor_total'] += sugestao_confirmada['preco']
+                response_message = f"'{sugestao_confirmada['nome']}' adicionado ao seu pedido."
             else:
-                for sug in sugestoes_pendentes:
-                    if string_comparação(sug['nome']) == user_response_lower:
+                found_exact_match = False
+                for i, sug in enumerate(sugestoes_pendentes):
+                    if string_comparação(sug['nome']) == user_input_lower:
                         itens_pedido.append({'nome': sug['nome'], 'preco': sug['preco']})
-                        estado_conversa['valor_total'] += sug['preco'] 
-                        achou_e_adicionou = True
+                        estado_conversa['valor_total'] += sug['preco']
                         response_message = f"'{sug['nome']}' adicionado ao seu pedido."
+                        sugestoes_pendentes.pop(i) 
+                        found_exact_match = True
                         break
                 
-                if achou_e_adicionou:
-                    estado_conversa['sugestoes_pendentes'] = [
-                        s for s in sugestoes_pendentes if string_comparação(s['nome']) != user_response_lower
-                    ]
-                    
-                    if not estado_conversa['sugestoes_pendentes']:
-                        response_message += "\nNão há mais sugestões pendentes."
-                        estado_conversa['esperando'] = 'adicionar_mais'
-                    else:
-                        response_message += "\n\nMais sugestões pendentes:\n"
-                        for s in estado_conversa['sugestoes_pendentes']:
-                            response_message += f"- Você quis dizer '{s['nome']}' para '{s['nome_original_input']}'? (sim/não)\n"
-                        response_message += "\nPor favor, diga o nome exato do item para adicionar ou 'não' para ignorar as sugestões."
-
-                else:
-                    response_message = "Não entendi sua resposta ou o item não corresponde a uma das sugestões. Por favor, diga o nome exato do item sugerido ou 'não' para ignorar as sugestões.\n\nSugestões pendentes:\n"
-                    for s in sugestoes_pendentes:
-                        response_message += f"- Você quis dizer '{s['nome']}' para '{s['nome_original_input']}'? (sim/não)\n"
+                if not found_exact_match:
+                    response_message = "Não entendi sua resposta ou o item não corresponde a uma das sugestões."
             
-            estado_conversa['itens_pedido'] = itens_pedido
+            estado_conversa['sugestoes_pendentes'] = sugestoes_pendentes 
+            estado_conversa['itens_pedido'] = itens_pedido 
+            if sugestoes_pendentes:
+                response_message += "\n\nPróxima sugestão:\n"
+                proxima_sugestao = sugestoes_pendentes[0]
+                response_message += f"- Você quis dizer '{proxima_sugestao['nome']}' para '{proxima_sugestao['nome_original_input']}'? (sim/não)\n"
+                response_message += "\nOu diga o nome exato do item para adicionar."
+                estado_conversa['esperando'] = 'awaiting_multiple_item_confirmation' 
+            else:
+                response_message += "\n\nNão há mais sugestões pendentes."
+                estado_conversa['esperando'] = 'adicionar_mais' 
+
+         
             if estado_conversa['esperando'] == 'adicionar_mais':
                  response_message += f"\n\nSeu pedido atual:\n"
                  for item in estado_conversa['itens_pedido']:
                      response_message += f"- {item['nome']} (R${item['preco']:.2f})\n"
                  response_message += f"Valor total: R${estado_conversa['valor_total']:.2f}\n"
                  response_message += "Deseja adicionar mais alguma coisa? (sim/não/remover/finalizar)"
-
 
             return jsonify({
                 'resposta': response_message,
