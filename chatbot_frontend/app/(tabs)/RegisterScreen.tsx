@@ -1,3 +1,4 @@
+//testada
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, SafeAreaView, useWindowDimensions, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
@@ -81,6 +82,7 @@ export default function RegisterScreen() {
             keyboardType="numbers-and-punctuation"
             value={telefone}
             onChangeText={setTelefone}
+            placeholderTextColor="#000"
           />
 
           <TextInput
@@ -89,6 +91,7 @@ export default function RegisterScreen() {
             secureTextEntry
             value={senha}
             onChangeText={setSenha}
+            placeholderTextColor="#000"
           />
 
           <TextInput
@@ -97,6 +100,7 @@ export default function RegisterScreen() {
             secureTextEntry
             value={confirmarSenha}
             onChangeText={setConfirmarSenha}
+            placeholderTextColor="#000"
           />
 
           <TouchableOpacity style={styles.button} onPress={handleRegister} disabled={loadingRegister}>

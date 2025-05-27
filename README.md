@@ -1,37 +1,73 @@
-# Poliedro
 
-Projeto Integrador Interdisciplinar dos cursos de Sistemas da Informação, Ciência da Computação, Ciência de Dados e Inteligência Artificial, parceria com o projeto desenvolvido pelo Poliedro.
-Instituto Mauá de Tecnologia (IMT) - Primeiro Semestre 2025
+# Projeto Chatbot atendimento
 
-Eike --> 24.00682-3 --> @.dev-eike
+O projeto consiste em um Chatbot movido a API de inteligência artificial para fins de atendimentos ao público de um restaurente.
 
-Gustavo --> 24.00805-2 --> @.Guimaaz
 
-Guilherme Duarte --> 24.00888-5 --> @guimduarte.
 
-Mateusz --> 24.01627-6 --> @Mattcs1206.
 
-passo a passo de como rodar a aplicação
+## Autores
 
-python -m pip install Flask
-pip install google-generativeai
-pip install python-dotenv
-criar .env e colocar a api ( developer )
+- [@Gustavo Guimarães Rodrigues](https://www.github.com/Guimaaz) - Desenvolvedor Front-End, Back-End, Estrutação de Banco de Dados, Envoltório de IA (Funilamento de API de IA para fins nichados), API ( Conexão com a IA e requisições entre as Stacks)
 
-baixar o expo, npm install expo
+- [@Guilherme Monte Duarte](https://www.github.com/guimduarte) - Responsável pela documentação do Software e Estruturação de requisitos do Software
 
-caso o sistema implicar com script
+- [@Mateusz chaves slawacki](https://www.github.com/Mattcs1206) - Responsável pela documentação do Software e Estruturação de requisitos do Software
 
-Set-ExecutionPolicy -Scope Process -executionPolicy Bypass ( isso deixa os scripts modificaveis uma vez )
+- [@Eike Marchioli Unlinski](https://www.github.com/dev-eike/dev-eike) - Membro do projeto
 
-após isso
 
-cd chatbot_frontend
 
-npx expo start --tunnel
 
-e para rodar a api
+## Variáveis de Ambiente
 
-na raiz do projeto - python api.py
+Para rodar esse projeto, você vai precisar adicionar as seguintes variáveis de ambiente no seu .env
 
-ir no arquivo cd chatbot_frontend/utils/api.js e na const api_base_url por seu ip :5000
+`API_KEY` e colocar a chave API
+
+
+
+
+
+## Stacks 
+
+**Front-end:** React Native, Expo, React Native Stylesheet, TypeScript (TSX)
+
+**Back-end:** Node, Python, Sqlite, JavaScrpit, Bibliotecas:( uuid, logging, hashlib, difflib, Re, Sqlite3, Axios) 
+
+
+
+## Rodando localmente
+
+Clone o projeto
+
+```bash
+  git clone https://github.com/Guimaaz/ProjetosPoliedroChatBot
+```
+
+Entre no diretório do projeto
+
+```bash
+  cd chatbot_frontend
+```
+
+Instale as dependências
+
+```bash
+  npm install
+  npx expo install @react-native-async-storage/async-storage
+  npm install axios
+```
+
+Inicie o servidor
+
+```bash
+  Para rodar a API - Na raiz do projeto e de python api.python
+  Para rodar o APP - cd chatbot_frontend e de npx expo start
+```
+
+
+## Documentação
+
+[Documentação](https://link-da-documentação)
+

@@ -6,9 +6,10 @@ import os
 import sqlite3
 from dotenv import load_dotenv
 from pathlib import Path
-from server.prompts import prompt_completo
+from server.prompts import prompt_completo 
 from server.BancoPedidos import *
-import uuid
+import uuid 
+import difflib 
 
 app = Flask(__name__)
 CORS(app)
@@ -19,13 +20,87 @@ model = genai.GenerativeModel("gemini-1.5-flash")
 
 CreateDatabase()
 
-conversa_estado = {}
+Fluxo_conversa = {}
 
 def extrair_intencao(texto):
-    match_pedido = re.search(r'INTENÇÃO:\s*(FAZER_PEDIDO|CONSULTAR_PEDIDO|REMOVER_PEDIDO|VER_CARDAPIO|OUTRA)', texto, re.IGNORECASE)
+    match_pedido = re.search(r'INTENÇÃO:\s*(FAZER_PEDIDO|CONSULTAR_PEDIDO|REMOVER_PEDIDO|OUTRA)', texto, re.IGNORECASE)
     if match_pedido:
         return match_pedido.group(1).upper()
+    if re.search(r'\b(cardapio|menu|exibir|exiba|o que tem para comer|comida|bebida)\b', texto, re.IGNORECASE):
+        return "VER_CARDAPIO"
+    if re.search(r'\b(quero comer|fazer pedido|pedir|gostaria de pedir|fome|pedir um|pedir uma)\b', texto, re.IGNORECASE):
+        return "FAZER_PEDIDO_GENERICO"
+    
     return None
+
+def string_comparação(texto):
+    return re.sub(r'[^\w\s]', '', texto).strip().lower()
+
+
+def Multiplos_pedidos(user_input):
+    """
+    Tenta extrair múltiplos itens de um único input, verifica contra o cardápio
+    e retorna itens encontrados, não encontrados e sugestões.
+    """
+    itens_input = []
+    filtrar_itens_input = re.sub(r'\s+e\s+|\s*,\s*', ' DIVISOR ', user_input.lower())
+    palavras_irrelevantes = ["quero", "um", "uma", "me ve", "me vê", "pedir", "gostaria de", "por favor", "adicionar", "adicione", "e", "com", "favor"]
+    desconsiderar = r'\b(?:' + '|'.join(map(re.escape, palavras_irrelevantes)) + r')\b'  
+    filtrar_itens_input = re.sub(desconsiderar, '', filtrar_itens_input).strip()
+    pedido_em_si = [p.strip() for p in filtrar_itens_input.split(' DIVISOR ') if p.strip()]
+    
+    for parte in pedido_em_si:
+        pedido_separado = string_comparação(parte)
+        if pedido_separado:
+            itens_input.append(pedido_separado)
+            
+    itens_adicionados_sucesso = []
+    itens_nao_encontrados = []
+    itens_sugeridos = [] 
+    cardapio_banco = []
+    cardapio_completo = Cardapio_banco()
+    for categoria_itens in cardapio_completo.values():
+        for item in categoria_itens:
+            cardapio_banco.append({
+                'nome_original': item['pedido'],
+                'nome_limpo': string_comparação(item['pedido']),
+                'descricao': item['descricao'],
+                'preco': item['preco']
+            })
+    
+    nome_cardapio_juncao = [item['nome_limpo'] for item in cardapio_banco]
+
+    for item_input_filtrado in itens_input:
+        encontrado_diretamente = False
+        for card_item in cardapio_banco:
+            if card_item['nome_limpo'] == item_input_filtrado:
+                itens_adicionados_sucesso.append({
+                    'nome': card_item['nome_original'],
+                    'preco': card_item['preco'],
+                    'descricao': card_item['descricao']
+                })
+                encontrado_diretamente = True
+                break
+        
+        if not encontrado_diretamente:
+            sugestoes_difflib = difflib.get_close_matches(item_input_filtrado, nome_cardapio_juncao, n=1, cutoff=0.7) 
+            
+            if sugestoes_difflib:
+                nome_sugerido_limpo = sugestoes_difflib[0]
+                for card_item in cardapio_banco:
+                    if card_item['nome_limpo'] == nome_sugerido_limpo:
+                        if not any(s['nome'] == card_item['nome_original'] for s in itens_sugeridos):
+                            itens_sugeridos.append({
+                                'nome_original_input': item_input_filtrado, 
+                                'nome': card_item['nome_original'],
+                                'preco': card_item['preco'],
+                                'descricao': card_item['descricao']
+                            })
+                        break
+            else:
+                itens_nao_encontrados.append(item_input_filtrado)
+                
+    return itens_adicionados_sucesso, itens_nao_encontrados, itens_sugeridos
 
 @app.route('/register', methods=['POST'])
 def register():
@@ -83,119 +158,225 @@ def chat():
     if not numero_cliente_logado:
         return jsonify({'resposta': 'Você precisa estar logado para usar o chatbot para pedidos.', 'error': True, 'id_conversa': id_conversa}), 401
 
-    if id_conversa not in conversa_estado:
-        conversa_estado[id_conversa] = {'esperando': None, 'itens_pedido': [], 'valor_total': 0.0, 'item_sugerido': None, 'descricao_sugerida': None, 'preco_sugerido': 0.0, 'pedidos_atuais': None, 'pedido_sessao_id': None}
+    if id_conversa not in Fluxo_conversa:
+        Fluxo_conversa[id_conversa] = {
+            'esperando': None,
+            'itens_pedido': [],
+            'valor_total': 0.0,
+            'pedidos_atuais': None,
+            'pedido_sessao_id': None,
+            'ofereceu_cardapio_antes_de_pedir': False,
+            'sugestoes_pendentes': [] 
+        }
 
-    estado_conversa = conversa_estado[id_conversa]
+    estado_conversa = Fluxo_conversa[id_conversa]
     esperando = estado_conversa['esperando']
     itens_pedido = estado_conversa['itens_pedido']
     valor_total = estado_conversa['valor_total']
-    item_sugerido = estado_conversa['item_sugerido']
-    descricao_sugerida = estado_conversa['descricao_sugerida']
-    preco_sugerido = estado_conversa['preco_sugerido']
-    pedidos_atuais = estado_conversa['pedidos_atuais']
     pedido_sessao_id_atual = estado_conversa.get('pedido_sessao_id')
+    ofereceu_cardapio_antes_de_pedir = estado_conversa['ofereceu_cardapio_antes_de_pedir']
 
     try:
         if esperando == 'pedido':
-            itemSugerido_verificado, exato, descricao_item, preco_item = VerificarItensCardapio(user_input)
+            itens_adicionados_raw, itens_nao_encontrados, itens_sugeridos_raw = Multiplos_pedidos(user_input)
+            
+            resposta_partes = []
+            
+            if itens_adicionados_raw:
+                for item_info in itens_adicionados_raw:
+                    itens_pedido.append({'nome': item_info['nome'], 'preco': item_info['preco']})
+                    valor_total += item_info['preco']
+                
+                nomes_adicionados = [item['nome'] for item in itens_adicionados_raw]
+                resposta_partes.append(f"'{', '.join(nomes_adicionados)}' adicionado(s) ao pedido.")
+            
+            if itens_sugeridos_raw:
+                estado_conversa['sugestoes_pendentes'] = itens_sugeridos_raw
+                nomes_sugeridos = [item['nome'] for item in itens_sugeridos_raw]
+            
+                estado_conversa['esperando'] = 'awaiting_multiple_item_confirmation'
+                
+                resposta_final = "Encontrei as seguintes sugestões para o que você pediu:\n"
+                for sug in itens_sugeridos_raw:
+                    resposta_final += f"- Você quis dizer '{sug['nome']}' para '{sug['nome_original_input']}'? (sim/não)\n"
+                resposta_final += "\nPor favor, diga o nome exato do item para adicionar ou 'não' para ignorar as sugestões."
 
-            if not itemSugerido_verificado:
+                estado_conversa['itens_pedido'] = itens_pedido 
+                estado_conversa['valor_total'] = valor_total 
+
                 return jsonify({
-                    'resposta': "Não entendi o que você gostaria de pedir. Por favor, diga o nome exato do item.",
-                    'esperando': 'pedido',
-                    'id_conversa': id_conversa
+                    'resposta': resposta_final,
+                    'esperando': estado_conversa['esperando'],
+                    'id_conversa': id_conversa,
+                    'itens_pedido_atual': [{'nome': item['nome'], 'preco': item['preco']} for item in itens_pedido]
                 })
 
-            if not exato:
-                estado_conversa['esperando'] = 'confirmacao_pedido'
-                estado_conversa['item_sugerido'] = itemSugerido_verificado
-                estado_conversa['descricao_sugerida'] = descricao_item
-                estado_conversa['preco_sugerido'] = preco_item
-                return jsonify({
-                    'resposta': f"Você quis dizer '{itemSugerido_verificado}'? ({descricao_item} - R${preco_item:.2f}) (sim/não)",
-                    'esperando': 'confirmacao_pedido',
-                    'item_sugerido': itemSugerido_verificado,
-                    'descricao_sugerida': descricao_item,
-                    'preco_sugerido': preco_item,
-                    'id_conversa': id_conversa
-                })
+            if itens_nao_encontrados:
+                resposta_partes.append(f"\nNão entendi '{', '.join(itens_nao_encontrados)}'. Por favor, seja mais específico ou consulte o cardápio.")
 
-            estado_conversa['itens_pedido'].append({'nome': itemSugerido_verificado, 'preco': preco_item})
-            estado_conversa['valor_total'] += preco_item
-            estado_conversa['esperando'] = 'adicionar_mais'
+            if not itens_adicionados_raw and not itens_sugeridos_raw and not itens_nao_encontrados:
+                resposta_final = "Não entendi o que você gostaria de pedir. Por favor, diga o nome exato do(s) item(ns)."
+                estado_conversa['esperando'] = 'pedido'
+            else:
+                resposta_final = " ".join(resposta_partes).strip() + f"\n\nDeseja adicionar mais alguma coisa? (sim/não/remover/finalizar)"
+                estado_conversa['esperando'] = 'adicionar_mais' 
+            
+            estado_conversa['itens_pedido'] = itens_pedido 
+            estado_conversa['valor_total'] = valor_total 
+            
             return jsonify({
-                'resposta': f"'{itemSugerido_verificado}' (R${preco_item:.2f}) adicionado ao pedido. Deseja adicionar mais alguma coisa? (sim/não)",
-                'esperando': 'adicionar_mais',
-                'id_conversa': id_conversa
+                'resposta': resposta_final,
+                'esperando': estado_conversa['esperando'],
+                'id_conversa': id_conversa,
+                'itens_pedido_atual': [{'nome': item['nome'], 'preco': item['preco']} for item in itens_pedido]
+            })
+        
+        elif esperando == 'awaiting_multiple_item_confirmation':
+            sugestoes_pendentes = estado_conversa['sugestoes_pendentes']
+            
+            if not sugestoes_pendentes:
+                estado_conversa['esperando'] = 'adicionar_mais'
+                response_message = "Não há mais sugestões pendentes para processar."
+                if itens_pedido:
+                    response_message += f"\n\nSeu pedido atual:\n"
+                    for item in itens_pedido:
+                        response_message += f"- {item['nome']} (R${item['preco']:.2f})\n"
+                    response_message += f"Valor total: R${valor_total:.2f}\n"
+                response_message += "Deseja adicionar mais alguma coisa? (sim/não/remover/finalizar)"
+                
+                return jsonify({
+                    'resposta': response_message,
+                    'esperando': 'adicionar_mais',
+                    'id_conversa': id_conversa,
+                    'itens_pedido_atual': [{'nome': item['nome'], 'preco': item['preco']} for item in itens_pedido]
+                })
+
+            user_input_lower = string_comparação(user_input)
+            response_message = ""
+            
+         
+            if user_input_lower == "não" or user_input_lower == "nao":
+                sugestao_ignorada = sugestoes_pendentes.pop(0) 
+                response_message = f"'{sugestao_ignorada['nome']}' ignorado."
+            elif user_input_lower == "sim":
+                sugestao_confirmada = sugestoes_pendentes.pop(0)
+                itens_pedido.append({'nome': sugestao_confirmada['nome'], 'preco': sugestao_confirmada['preco']})
+                estado_conversa['valor_total'] += sugestao_confirmada['preco']
+                response_message = f"'{sugestao_confirmada['nome']}' adicionado ao seu pedido."
+            else:
+                found_exact_match = False
+                for i, sug in enumerate(sugestoes_pendentes):
+                    if string_comparação(sug['nome']) == user_input_lower:
+                        itens_pedido.append({'nome': sug['nome'], 'preco': sug['preco']})
+                        estado_conversa['valor_total'] += sug['preco']
+                        response_message = f"'{sug['nome']}' adicionado ao seu pedido."
+                        sugestoes_pendentes.pop(i) 
+                        found_exact_match = True
+                        break
+                
+                if not found_exact_match:
+                    response_message = "Não entendi sua resposta ou o item não corresponde a uma das sugestões."
+            
+            estado_conversa['sugestoes_pendentes'] = sugestoes_pendentes 
+            estado_conversa['itens_pedido'] = itens_pedido 
+            if sugestoes_pendentes:
+                response_message += "\n\nPróxima sugestão:\n"
+                proxima_sugestao = sugestoes_pendentes[0]
+                response_message += f"- Você quis dizer '{proxima_sugestao['nome']}' para '{proxima_sugestao['nome_original_input']}'? (sim/não)\n"
+                response_message += "\nOu diga o nome exato do item para adicionar."
+                estado_conversa['esperando'] = 'awaiting_multiple_item_confirmation' 
+            else:
+                response_message += "\n\nNão há mais sugestões pendentes."
+                estado_conversa['esperando'] = 'adicionar_mais' 
+
+         
+            if estado_conversa['esperando'] == 'adicionar_mais':
+                 response_message += f"\n\nSeu pedido atual:\n"
+                 for item in estado_conversa['itens_pedido']:
+                     response_message += f"- {item['nome']} (R${item['preco']:.2f})\n"
+                 response_message += f"Valor total: R${estado_conversa['valor_total']:.2f}\n"
+                 response_message += "Deseja adicionar mais alguma coisa? (sim/não/remover/finalizar)"
+
+            return jsonify({
+                'resposta': response_message,
+                'esperando': estado_conversa['esperando'],
+                'id_conversa': id_conversa,
+                'itens_pedido_atual': [{'nome': item['nome'], 'preco': item['preco']} for item in itens_pedido]
             })
 
-        elif esperando == 'confirmacao_pedido':
-            if user_input.lower() in ['sim', 's']:
-                estado_conversa['itens_pedido'].append({'nome': item_sugerido, 'preco': preco_sugerido})
-                estado_conversa['valor_total'] += preco_sugerido
-                estado_conversa['esperando'] = 'adicionar_mais' 
-                estado_conversa['item_sugerido'] = None
-                estado_conversa['descricao_sugerida'] = None
-                estado_conversa['preco_sugerido'] = None
-                return jsonify({
-                    'resposta': f"'{item_sugerido}' (R${preco_sugerido:.2f}) adicionado ao pedido. Deseja adicionar mais alguma coisa? (sim/não)",
-                    'esperando': 'adicionar_mais',
-                    'id_conversa': id_conversa
-                })
-            else:
-                estado_conversa['esperando'] = 'pedido'
-                estado_conversa['item_sugerido'] = None
-                estado_conversa['descricao_sugerida'] = None
-                estado_conversa['preco_sugerido'] = None
-                return jsonify({
-                    'resposta': "Entendido. Por favor, diga novamente o que gostaria de pedir.",
-                    'esperando': 'pedido',
-                    'id_conversa': id_conversa
-                })
-
         elif esperando == 'adicionar_mais':
-            if user_input.lower() in ['sim', 's']:
+            if user_input.lower() in ['sim', 's', 'adicionar', 'quero adicionar mais']:
                 estado_conversa['esperando'] = 'pedido'
                 return jsonify({
                     'resposta': "Certo, o que mais gostaria de adicionar?",
                     'esperando': 'pedido',
-                    'id_conversa': id_conversa
+                    'id_conversa': id_conversa,
+                    'itens_pedido_atual': [{'nome': item['nome'], 'preco': item['preco']} for item in itens_pedido]
                 })
-            elif user_input.lower() in ['não', 'nao', 'finalizar', 'confirmar', 'ok']:
+            elif user_input.lower() in ['não', 'nao', 'finalizar', 'confirmar', 'ok', 'não quero mais', 'nao quero mais']:
+                if not estado_conversa['itens_pedido']:
+                    estado_conversa['esperando'] = None
+                    return jsonify({
+                        'resposta': "Seu pedido está vazio. Posso ajudar com outra coisa?",
+                        'id_conversa': id_conversa
+                    })
+
                 estado_conversa['esperando'] = 'confirmar_finalizar'
-                itens_listados = "\n- ".join([item['nome'] for item in estado_conversa['itens_pedido']])
+                itens_listados = "\n- ".join([f"{item['nome']} (R${item['preco']:.2f})" for item in estado_conversa['itens_pedido']])
                 return jsonify({
                     'resposta': f"Seu pedido atual é:\n- {itens_listados}\n\nValor total: R${estado_conversa['valor_total']:.2f}\n\nDeseja confirmar o pedido? (sim/não)",
                     'esperando': 'confirmar_finalizar',
                     'itens_pedido': estado_conversa['itens_pedido'],
                     'valor_total': estado_conversa['valor_total'],
-                    'id_conversa': id_conversa
+                    'id_conversa': id_conversa,
+                    'itens_pedido_atual': [{'nome': item['nome'], 'preco': item['preco']} for item in itens_pedido]
                 })
             elif "remover" in user_input.lower() or "tirar" in user_input.lower() or "excluir" in user_input.lower():
                 estado_conversa['esperando'] = 'remover_item'
+                itens_no_carrinho = ", ".join([item['nome'] for item in estado_conversa['itens_pedido']])
                 return jsonify({
-                    'resposta': "Qual item você gostaria de remover?",
+                    'resposta': f"Qual item você gostaria de remover do pedido atual? Itens no carrinho: {itens_no_carrinho}",
                     'esperando': 'remover_item',
                     'itens_pedido': [item['nome'] for item in estado_conversa['itens_pedido']],
-                    'id_conversa': id_conversa
+                    'id_conversa': id_conversa,
+                    'itens_pedido_atual': [{'nome': item['nome'], 'preco': item['preco']} for item in itens_pedido]
                 })
             else:
-                return jsonify({
-                    'resposta': "Não entendi sua resposta. Por favor, diga 'sim' para adicionar mais ou 'não' para finalizar.",
-                    'esperando': 'adicionar_mais',
-                    'id_conversa': id_conversa
-                })
-
+                
+                itens_adicionados_raw, itens_nao_encontrados, itens_sugeridos_raw = Multiplos_pedidos(user_input)
+                
+                if itens_adicionados_raw or itens_sugeridos_raw or itens_nao_encontrados:
+                    estado_conversa['esperando'] = 'pedido'
+                    return chat() 
+                else:
+                    return jsonify({
+                        'resposta': "Não entendi sua resposta. Por favor, diga 'sim' para adicionar mais, 'não' para finalizar ou 'remover' para tirar um item.",
+                        'esperando': 'adicionar_mais',
+                        'id_conversa': id_conversa,
+                        'itens_pedido_atual': [{'nome': item['nome'], 'preco': item['preco']} for item in itens_pedido]
+                    })
         elif esperando == 'confirmar_finalizar':
             if user_input.lower() in ['sim', 's', 'confirmar', 'finalizar', 'ok']:
+                if not estado_conversa['itens_pedido']:
+                    estado_conversa['esperando'] = None
+                    return jsonify({
+                        'resposta': "Seu pedido está vazio e não pode ser finalizado. Posso ajudar com outra coisa?",
+                        'id_conversa': id_conversa
+                    })
+                if not estado_conversa['pedido_sessao_id']:
+                    estado_conversa['pedido_sessao_id'] = str(uuid.uuid4())
+
                 PedidosArmazenados(numero_cliente_logado, estado_conversa['itens_pedido'], estado_conversa['valor_total'], estado_conversa['pedido_sessao_id'])
+                response_message = f"Pedido (ID: {estado_conversa['pedido_sessao_id']}) finalizado com sucesso! Obrigado!"
                 estado_conversa['esperando'] = None
                 estado_conversa['itens_pedido'] = []
                 estado_conversa['valor_total'] = 0.0
                 estado_conversa['pedido_sessao_id'] = None
+                estado_conversa['ofereceu_cardapio_antes_de_pedir'] = False
+                estado_conversa['sugestoes_pendentes'] = [] 
+                
                 return jsonify({
-                    'resposta': "Pedido finalizado com sucesso! Obrigado!",
+                    'resposta': response_message,
                     'id_conversa': id_conversa
                 })
             elif user_input.lower() in ['não', 'nao', 'cancelar']:
@@ -203,113 +384,198 @@ def chat():
                 return jsonify({
                     'resposta': "Pedido não confirmado. Deseja adicionar mais itens, remover algum item ou finalizar o pedido?",
                     'esperando': 'opcoes_pos_confirmacao',
-                    'id_conversa': id_conversa
+                    'id_conversa': id_conversa,
+                    'itens_pedido_atual': [{'nome': item['nome'], 'preco': item['preco']} for item in itens_pedido]
                 })
             elif "remover" in user_input.lower() or "tirar" in user_input.lower() or "excluir" in user_input.lower():
                 estado_conversa['esperando'] = 'remover_item'
+                itens_no_carrinho = ", ".join([item['nome'] for item in estado_conversa['itens_pedido']])
                 return jsonify({
-                    'resposta': "Qual item você gostaria de remover?",
+                    'resposta': f"Qual item você gostaria de remover do pedido atual? Itens no carrinho: {itens_no_carrinho}",
                     'esperando': 'remover_item',
                     'itens_pedido': [item['nome'] for item in estado_conversa['itens_pedido']],
-                    'id_conversa': id_conversa
+                    'id_conversa': id_conversa,
+                    'itens_pedido_atual': [{'nome': item['nome'], 'preco': item['preco']} for item in itens_pedido]
                 })
             elif "adicionar" in user_input.lower() or "mais" in user_input.lower() or "outro" in user_input.lower() or "pedir" in user_input.lower():
                 estado_conversa['esperando'] = 'pedido'
                 return jsonify({
                     'resposta': "Certo, o que mais gostaria de adicionar?",
                     'esperando': 'pedido',
-                    'id_conversa': id_conversa
+                    'id_conversa': id_conversa,
+                    'itens_pedido_atual': [{'nome': item['nome'], 'preco': item['preco']} for item in itens_pedido]
                 })
             else:
                 return jsonify({
                     'resposta': "Não entendi sua resposta. Por favor, diga 'sim' para confirmar ou 'não' para fazer alterações.",
                     'esperando': 'confirmar_finalizar',
-                    'id_conversa': id_conversa
+                    'id_conversa': id_conversa,
+                    'itens_pedido_atual': [{'nome': item['nome'], 'preco': item['preco']} for item in itens_pedido]
                 })
 
         elif esperando == 'opcoes_pos_confirmacao':
             if "remover" in user_input.lower() or "tirar" in user_input.lower() or "excluir" in user_input.lower():
                 estado_conversa['esperando'] = 'remover_item'
+                itens_no_carrinho = ", ".join([item['nome'] for item in estado_conversa['itens_pedido']])
                 return jsonify({
-                    'resposta': "Qual item você gostaria de remover?",
+                    'resposta': f"Qual item você gostaria de remover do pedido atual? Itens no carrinho: {itens_no_carrinho}",
                     'esperando': 'remover_item',
                     'itens_pedido': [item['nome'] for item in estado_conversa['itens_pedido']],
-                    'id_conversa': id_conversa
+                    'id_conversa': id_conversa,
+                    'itens_pedido_atual': [{'nome': item['nome'], 'preco': item['preco']} for item in itens_pedido]
                 })
             elif "adicionar" in user_input.lower() or "mais" in user_input.lower() or "outro" in user_input.lower() or "pedir" in user_input.lower():
                 estado_conversa['esperando'] = 'pedido'
                 return jsonify({
                     'resposta': "Certo, o que mais gostaria de adicionar?",
                     'esperando': 'pedido',
-                    'id_conversa': id_conversa
+                    'id_conversa': id_conversa,
+                    'itens_pedido_atual': [{'nome': item['nome'], 'preco': item['preco']} for item in itens_pedido]
                 })
             elif user_input.lower() in ['finalizar', 'confirmar', 'ok']:
                 estado_conversa['esperando'] = 'confirmar_finalizar'
-                itens_listados = "\n- ".join([item['nome'] for item in estado_conversa['itens_pedido']])
+                itens_listados = "\n- ".join([f"{item['nome']} (R${item['preco']:.2f})" for item in estado_conversa['itens_pedido']])
                 return jsonify({
                     'resposta': f"Seu pedido atual é:\n- {itens_listados}\n\nValor total: R${estado_conversa['valor_total']:.2f}\n\nDeseja confirmar o pedido agora? (sim/não)",
                     'esperando': 'confirmar_finalizar',
                     'itens_pedido': estado_conversa['itens_pedido'],
                     'valor_total': estado_conversa['valor_total'],
-                    'id_conversa': id_conversa
+                    'id_conversa': id_conversa,
+                    'itens_pedido_atual': [{'nome': item['nome'], 'preco': item['preco']} for item in itens_pedido]
                 })
             else:
                 return jsonify({
                     'resposta': "Não entendi sua solicitação. Por favor, diga se quer 'adicionar', 'remover' ou 'finalizar'.",
                     'esperando': 'opcoes_pos_confirmacao',
-                    'id_conversa': id_conversa
+                    'id_conversa': id_conversa,
+                    'itens_pedido_atual': [{'nome': item['nome'], 'preco': item['preco']} for item in itens_pedido]
                 })
 
         elif esperando == 'remover_item':
-            item_para_remover = user_input.strip().lower()
+            item_para_remover = string_comparação(user_input)
             removido = False
             indice_para_remover = -1
-            for i in range(len(estado_conversa['itens_pedido'])):
-                if estado_conversa['itens_pedido'][i]['nome'].lower() == item_para_remover:
+            for i in range(len(estado_conversa['itens_pedido']) -1, -1, -1):
+                if string_comparação(estado_conversa['itens_pedido'][i]['nome']) == item_para_remover:
                     removido = True
                     indice_para_remover = i
                     break
+            
             if removido:
                 item_removido = estado_conversa['itens_pedido'].pop(indice_para_remover)
                 estado_conversa['valor_total'] -= item_removido['preco']
-                itens_listados = "\n- ".join([item['nome'] for item in estado_conversa['itens_pedido']])
-                estado_conversa['esperando'] = 'confirmar_finalizar' # Após remover, volta para a confirmação
+                
+                itens_listados = "\n- ".join([f"{item['nome']} (R${item['preco']:.2f})" for item in estado_conversa['itens_pedido']])
+                
+                response_text = f"'{item_removido['nome']}' removido do pedido."
+                if estado_conversa['itens_pedido']:
+                    response_text += f"\nSeu pedido atual é:\n- {itens_listados}\n\nValor total: R${estado_conversa['valor_total']:.2f}"
+                else:
+                    response_text += "\nSeu carrinho está vazio."
+                
+                response_text += "\n\nDeseja adicionar mais itens, remover outro item ou finalizar o pedido?"
+                estado_conversa['esperando'] = 'opcoes_pos_confirmacao'
+                
                 return jsonify({
-                    'resposta': f"'{item_para_remover}' removido do pedido. Seu pedido atual é:\n- {itens_listados}\n\nValor total: R${estado_conversa['valor_total']:.2f}\n\nDeseja confirmar o pedido? (sim/não)",
-                    'esperando': 'confirmar_finalizar',
-                    'id_conversa': id_conversa
+                    'resposta': response_text,
+                    'esperando': 'opcoes_pos_confirmacao',
+                    'id_conversa': id_conversa,
+                    'itens_pedido_atual': [{'nome': item['nome'], 'preco': item['preco']} for item in itens_pedido]
                 })
             else:
-                estado_conversa['esperando'] = 'confirmar_finalizar' # Se não encontrar, volta para a confirmação
+                itens_no_carrinho = ", ".join([item['nome'] for item in estado_conversa['itens_pedido']])
                 return jsonify({
-                    'resposta': f"'{item_para_remover}' não encontrado no seu pedido atual. Deseja confirmar o pedido? (sim/não)",
-                    'esperando': 'confirmar_finalizar',
-                    'itens_pedido': [item['nome'] for item in estado_conversa['itens_pedido']],
+                    'resposta': f"Não encontrei '{user_input}' no seu pedido atual. Itens no carrinho: {itens_no_carrinho}\n\nDeseja adicionar mais itens, remover outro item ou finalizar o pedido?",
+                    'esperando': 'opcoes_pos_confirmacao',
+                    'itens_pedido_atual': [{'nome': item['nome'], 'preco': item['preco']} for item in itens_pedido],
                     'id_conversa': id_conversa
                 })
-
+            
         elif esperando == 'pedido_remocao': 
             pedido_remover = user_input.strip()
             resultado_remocao = removerPedidos(numero_cliente_logado, pedido_remover)
-            estado_conversa['esperando'] = None
+            estado_conversa['esperando'] = None 
             return jsonify({
                 'resposta': resultado_remocao,
                 'id_conversa': id_conversa
             })
+            
+        elif esperando == 'confirmar_ver_cardapio':
+            if user_input.lower() in ['sim', 's']:
+                cardapio_db = Cardapio_banco()
+                if cardapio_db:
+                    cardapio_texto = "Cardápio do Restaurante\n"
+                    for categoria, itens in cardapio_db.items():
+                        cardapio_texto += f"\n*{categoria}*\n"
+                        for item in itens:
+                            cardapio_texto += f"- {item['pedido']} - R${item['preco']:.2f}"
+                            if item['descricao']:
+                                cardapio_texto += f" - {item['descricao']}"
+                            cardapio_texto += "\n"
+                    estado_conversa['esperando'] = 'pedido' 
+                    estado_conversa['ofereceu_cardapio_antes_de_pedir'] = False 
+                    return jsonify({'resposta': cardapio_texto.strip() + "\n\nO que gostaria de pedir?", 'id_conversa': id_conversa, 'esperando': 'pedido'})
+                else:
+                    estado_conversa['esperando'] = None
+                    estado_conversa['ofereceu_cardapio_antes_de_pedir'] = False
+                    return jsonify({'resposta': "O cardápio está vazio no momento. Posso ajudar com outra coisa?", 'id_conversa': id_conversa})
+            else: 
+                estado_conversa['esperando'] = 'pedido' 
+                estado_conversa['ofereceu_cardapio_antes_de_pedir'] = False
+                return jsonify({'resposta': "Entendido. Então, o que gostaria de pedir?", 'esperando': 'pedido', 'id_conversa': id_conversa})
 
+        
         else:
+            intencao_pre_gemini = extrair_intencao(user_input)
+            if intencao_pre_gemini == "VER_CARDAPIO":
+                cardapio_db = Cardapio_banco()
+                if cardapio_db:
+                    cardapio_texto = "Cardapio do Restaurante\n"
+                    for categoria, itens in cardapio_db.items():
+                        cardapio_texto += f"\n*{categoria}*\n"
+                        for item in itens:
+                            cardapio_texto += f"- {item['pedido']} - R${item['preco']:.2f}"
+                            if item['descricao']:
+                                cardapio_texto += f" - {item['descricao']}"
+                            cardapio_texto += "\n"
+                    return jsonify({'resposta': cardapio_texto.strip() + "\n\nO que gostaria de pedir?", 'id_conversa': id_conversa, 'esperando': 'pedido'})
+                else:
+                    return jsonify({'resposta': "O cardapio está vazio no momento. Posso ajudar com outra coisa?", 'id_conversa': id_conversa})
+            
+            elif intencao_pre_gemini == "FAZER_PEDIDO_GENERICO":
+                if not ofereceu_cardapio_antes_de_pedir:
+                    estado_conversa['esperando'] = 'confirmar_ver_cardapio'
+                    estado_conversa['ofereceu_cardapio_antes_de_pedir'] = True
+                    return jsonify({
+                        'resposta': "Você gostaria de ver o cardápio antes de fazer o pedido? (sim/não)",
+                        'esperando': 'confirmar_ver_cardapio',
+                        'id_conversa': id_conversa
+                    })
+                else: 
+                    estado_conversa['esperando'] = 'pedido'
+                    estado_conversa['itens_pedido'] = [] 
+                    estado_conversa['valor_total'] = 0.0
+                    estado_conversa['pedido_sessao_id'] = str(uuid.uuid4()) 
+                    estado_conversa['ofereceu_cardapio_antes_de_pedir'] = False 
+                    return jsonify({
+                        'resposta': "Certo! Qual será seu primeiro item?",
+                        'esperando': 'pedido',
+                        'id_conversa': id_conversa
+                    })    
             response = model.generate_content([{"role": "user", "parts": [prompt_completo + user_input]}])
-            bot_reply = response.text.strip()
-            intencao = extrair_intencao(bot_reply)
-
+            bot_reply_raw = response.text.strip() 
+            bot_reply_cleaned = re.sub(r'INTENÇÃO:\s*([A-Z_]+)\s*', '', bot_reply_raw, flags=re.IGNORECASE).strip()
+            
+            intencao = extrair_intencao(bot_reply_raw) 
             if not intencao:
-                return jsonify({'resposta': bot_reply, 'id_conversa': id_conversa})
+                return jsonify({'resposta': bot_reply_cleaned, 'id_conversa': id_conversa})
 
             if intencao == "FAZER_PEDIDO":
                 estado_conversa['esperando'] = 'pedido'
-                estado_conversa['itens_pedido'] = []
+                estado_conversa['itens_pedido'] = [] 
                 estado_conversa['valor_total'] = 0.0
-                estado_conversa['pedido_sessao_id'] = str(uuid.uuid4()) # um novo id por conversa
+                estado_conversa['pedido_sessao_id'] = str(uuid.uuid4()) 
+                estado_conversa['ofereceu_cardapio_antes_de_pedir'] = False 
                 return jsonify({
                     'resposta': "Certo! Qual será seu primeiro item?",
                     'esperando': 'pedido',
@@ -317,15 +583,17 @@ def chat():
                 })
             elif intencao == "CONSULTAR_PEDIDO":
                 resultado = BuscarPedidos(numero_cliente_logado)
-                estado_conversa['esperando'] = None
+                estado_conversa['esperando'] = None 
+                estado_conversa['ofereceu_cardapio_antes_de_pedir'] = False
                 return jsonify({
                     'resposta': resultado,
                     'id_conversa': id_conversa
                 })
             elif intencao == "REMOVER_PEDIDO": 
                 pedidos_atuais_texto = BuscarPedidos(numero_cliente_logado)
-                estado_conversa['esperando'] = 'pedido_remocao'
-                estado_conversa['pedidos_atuais'] = pedidos_atuais_texto
+                estado_conversa['esperando'] = 'pedido_remocao' 
+                estado_conversa['pedidos_atuais'] = pedidos_atuais_texto 
+                estado_conversa['ofereceu_cardapio_antes_de_pedir'] = False
                 if "nenhum pedido" in pedidos_atuais_texto.lower():
                     return jsonify({ 'resposta': "Não encontramos pedidos ativos para este número.",
                         'id_conversa': id_conversa
@@ -337,9 +605,9 @@ def chat():
                     'id_conversa': id_conversa
                 })
             elif intencao == "VER_CARDAPIO":
-                cardapio_db = buscar_cardapio_completo()
+                cardapio_db = Cardapio_banco()
                 if cardapio_db:
-                    cardapio_texto = "Cardápio do Restaurante\n"
+                    cardapio_texto = "Cardapio do Restaurante\n"
                     for categoria, itens in cardapio_db.items():
                         cardapio_texto += f"\n*{categoria}*\n"
                         for item in itens:
@@ -347,17 +615,17 @@ def chat():
                             if item['descricao']:
                                 cardapio_texto += f" - {item['descricao']}"
                             cardapio_texto += "\n"
-                    return jsonify({'resposta': cardapio_texto.strip(), 'id_conversa': id_conversa})
+                    estado_conversa['ofereceu_cardapio_antes_de_pedir'] = False
+                    return jsonify({'resposta': cardapio_texto.strip() + "\n\nO que gostaria de pedir?", 'id_conversa': id_conversa, 'esperando': 'pedido'})
                 else:
-                    return jsonify({'resposta': "O cardápio está vazio no momento.", 'id_conversa': id_conversa})
-
-            return jsonify({'resposta': bot_reply, 'id_conversa': id_conversa})
+                    estado_conversa['ofereceu_cardapio_antes_de_pedir'] = False
+                    return jsonify({'resposta': "O cardapio está vazio no momento.", 'id_conversa': id_conversa})
+            return jsonify({'resposta': bot_reply_cleaned, 'id_conversa': id_conversa})
 
     except Exception as e:
         print(f"Erro no chat: {e}")
-        return jsonify({'resposta': "Ocorreu um erro inesperado.", 'error': True, 'id_conversa': id_conversa}), 500
+        return jsonify({'resposta': "Ocorreu um erro inesperado. Por favor, tente novamente mais tarde.", 'error': True, 'id_conversa': id_conversa}), 500
 
-# Rotas para o painel de administração
 
 @app.route('/admin/pedidos')
 def admin_listar_pedidos():
@@ -410,7 +678,7 @@ def admin_adicionar_cardapio_item():
         return jsonify({'message': f"Item '{pedido}' adicionado ao cardápio com ID {item_id}.", 'id': item_id}), 201
     except sqlite3.IntegrityError:
         conexao.close()
-        return jsonify({'error': f"Já existe um item com o nome '{pedido}' no cardápio."}), 409
+        return jsonify({'error': f"Já existe um item com o nome '{pedido}' no cardapio."}), 409
     except sqlite3.Error as e:
         conexao.close()
         return jsonify({'error': f"Erro ao adicionar item ao cardápio: {str(e)}"}), 500
@@ -437,5 +705,22 @@ def admin_listar_clientes():
     clientes = buscar_clientes_admin()
     return jsonify(clientes)
 
+@app.route('/admin/cardapio/add', methods=['POST'])
+def add_item_cardapio():
+    data = request.json
+    nome = data.get('nome')
+    preco = data.get('preco')
+    descricao = data.get('descricao')
+    categoria = data.get('categoria')
+
+    if not all([nome, preco is not None, categoria]):
+        return jsonify({"message": "Dados incompletos para adicionar item ao cardápio."}), 400
+
+    success, msg = adicionar_item_cardapio_admin(nome, preco, descricao, categoria)
+    if success:
+        return jsonify({"message": msg}), 201
+    else:
+        return jsonify({"message": msg}), 400
+
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(debug=True, port=5000)

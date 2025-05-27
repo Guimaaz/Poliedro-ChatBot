@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
 import { API_BASE_URL } from '../../utils/api';
 import AdminOrderList from './AdminOrderList';
 import AdminMenuList from './AdminMenuList';
@@ -11,12 +11,15 @@ interface PedidoAgrupado {
   data_inicio: string;
   data_fim: string;
   finalizado: boolean;
+  id : String;
 }
 
 interface MenuItem {
   id: number;
   pedido: string;
   preco: number;
+  descricao? : string;
+  categoria? : string;
 }
 
 const AdminHomeScreen = () => {
@@ -37,11 +40,9 @@ const AdminHomeScreen = () => {
         setPedidosFinalizados(data.finalizados);
       } else {
         console.error('Falha ao carregar pedidos:', response);
-        // Adicione tratamento de erro adequado
       }
     } catch (error) {
       console.error('Erro ao carregar pedidos:', error);
-      // Adicione tratamento de erro adequado
     } finally {
       setLoadingPedidos(false);
     }
@@ -56,11 +57,9 @@ const AdminHomeScreen = () => {
         setMenuItens(data);
       } else {
         console.error('Falha ao carregar cardápio:', response);
-        // Adicione tratamento de erro
       }
     } catch (error) {
       console.error('Erro ao carregar cardápio:', error);
-      // Adicione tratamento de erro
     } finally {
       setLoadingMenu(false);
     }
@@ -72,16 +71,16 @@ const AdminHomeScreen = () => {
   }, [carregarPedidos, carregarCardapio]);
 
   const handlePedidoFinalizado = useCallback(() => {
-    carregarPedidos(); // Recarrega os pedidos após a finalização
+    carregarPedidos(); 
   }, [carregarPedidos]);
 
   const handleMenuItemUpdated = useCallback(() => {
-    carregarCardapio(); // Recarrega o cardápio após a atualização
+    carregarCardapio(); 
   }, [carregarCardapio]);
 
   return (
-    <ScrollView style={styles.scrollViewContainer}> {/* Envolvemos tudo em um ScrollView */}
-      <View style={styles.container}>
+    <View style={{ flex: 1 }}> 
+      <View style={[styles.container, { flex: 1 }]}>
         <View style={styles.buttonContainer}>
           <TouchableOpacity
             style={[styles.tabButton, exibirPedidos && styles.activeTab]}
@@ -103,12 +102,11 @@ const AdminHomeScreen = () => {
             {loadingPedidos ? (
               <Text>Carregando pedidos...</Text>
             ) : (
-              <View style={{ minHeight: 300 }}> {/* Removi o ScrollView daqui */}
-                <AdminOrderList
-                  pedidosNaoFinalizados={pedidosNaoFinalizados}
-                  onPedidoFinalizado={handlePedidoFinalizado}
-                />
-              </View>
+
+              <AdminOrderList
+                pedidosNaoFinalizados={pedidosNaoFinalizados}
+                onPedidoFinalizado={handlePedidoFinalizado}
+              />
             )}
 
             {pedidosFinalizados.length > 0 && (
@@ -116,6 +114,8 @@ const AdminHomeScreen = () => {
                 <Text style={[styles.title, { marginTop: 10 }]}>Pedidos Finalizados</Text>
                 <FlatList
                   data={pedidosFinalizados}
+                  style={{ flex: 1 }}
+                  contentContainerStyle={{ paddingBottom: 16 }}
                   keyExtractor={(item) => item.cliente}
                   renderItem={({ item }) => (
                     <View style={styles.pedidoItem}>
@@ -137,19 +137,17 @@ const AdminHomeScreen = () => {
             {loadingMenu ? (
               <Text>Carregando cardápio...</Text>
             ) : (
+              // O AdminMenuList já deve retornar uma FlatList com flex: 1
               <AdminMenuList menuItens={menuItens} onMenuItemUpdated={handleMenuItemUpdated} />
             )}
           </View>
         )}
       </View>
-    </ScrollView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  scrollViewContainer: {
-    flex: 1, // Adicione flex: 1 ao ScrollView pai
-  },
   container: {
     padding: 20,
     backgroundColor: '#f5f5f5',

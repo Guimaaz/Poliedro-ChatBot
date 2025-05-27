@@ -1,3 +1,4 @@
+//testada
 import React, { useState } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { API_BASE_URL } from '../../utils/api';
@@ -62,6 +63,7 @@ const AdminOrderList: React.FC<AdminOrderListProps> = ({ pedidosNaoFinalizados, 
 
   return (
     <FlatList
+     style={{ flex: 1 }}
       data={pedidosNaoFinalizados}
       keyExtractor={(item) => item.cliente}
       renderItem={renderItem}
