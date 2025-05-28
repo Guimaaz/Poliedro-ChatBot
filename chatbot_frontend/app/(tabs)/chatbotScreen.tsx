@@ -168,7 +168,7 @@ export default function ChatScreen() {
         styles.messageBubble,
         isBot ? styles.botBubble : styles.userBubble
       ]}>
-        <Text style={styles.messageText}>{messageTextParts}</Text>
+        <Text style={styles.MessageText}>{messageTextParts}</Text>
       </View>
     );
   };
