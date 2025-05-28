@@ -44,17 +44,17 @@ export default function RegisterScreen() {
       return;
     }
 
-    const cleanedTelefone = telefone.replace(/\D/g, '');
+    
 
     setLoadingRegister(true);
-    console.log('Fazendo requisição de cadastro...', { numero_cliente: cleanedTelefone, senha });
+    console.log('Fazendo requisição de cadastro...', { numero_cliente: telefone, senha });
     try {
       const response = await fetch(`${API_BASE_URL}/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ numero_cliente: cleanedTelefone, senha }),
+        body: JSON.stringify({ numero_cliente: telefone, senha }),
       });
 
       console.log('Resposta bruta da API de cadastro:', response);
