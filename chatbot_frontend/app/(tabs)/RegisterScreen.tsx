@@ -1,4 +1,3 @@
-//testada
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, SafeAreaView, useWindowDimensions, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
@@ -7,6 +6,22 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../navigation';
 
 type RegisterScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'RegisterScreen'>;
+
+const formatPhoneNumber = (text: string) => {
+  const cleaned = text.replace(/\D/g, '');
+  const maxLength = 11;
+  const truncated = cleaned.substring(0, maxLength);
+  let formatted = '';
+  if (truncated.length === 0) return '';
+  if (truncated.length <= 2) {
+    formatted = `(${truncated}`;
+  } else if (truncated.length <= 7) {
+    formatted = `(${truncated.substring(0, 2)}) ${truncated.substring(2)}`;
+  } else {
+    formatted = `(${truncated.substring(0, 2)}) ${truncated.substring(2, 7)}-${truncated.substring(7)}`;
+  }
+  return formatted;
+};
 
 export default function RegisterScreen() {
   const [telefone, setTelefone] = useState('');
@@ -29,15 +44,17 @@ export default function RegisterScreen() {
       return;
     }
 
+    const cleanedTelefone = telefone.replace(/\D/g, '');
+
     setLoadingRegister(true);
-    console.log('Fazendo requisição de cadastro...', { numero_cliente: telefone, senha });
+    console.log('Fazendo requisição de cadastro...', { numero_cliente: cleanedTelefone, senha });
     try {
       const response = await fetch(`${API_BASE_URL}/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ numero_cliente: telefone, senha }),
+        body: JSON.stringify({ numero_cliente: cleanedTelefone, senha }),
       });
 
       console.log('Resposta bruta da API de cadastro:', response);
@@ -81,7 +98,8 @@ export default function RegisterScreen() {
             placeholder="Número de telefone"
             keyboardType="numbers-and-punctuation"
             value={telefone}
-            onChangeText={setTelefone}
+            onChangeText={text => setTelefone(formatPhoneNumber(text))}
+            maxLength={15}
             placeholderTextColor="#000"
           />
 
@@ -165,6 +183,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     fontSize: 16,
     marginBottom: 20,
+    color: '#000',
   },
   button: {
     width: 150,

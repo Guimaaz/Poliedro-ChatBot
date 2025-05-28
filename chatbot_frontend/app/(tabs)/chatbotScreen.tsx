@@ -168,7 +168,7 @@ export default function ChatScreen() {
         styles.messageBubble,
         isBot ? styles.botBubble : styles.userBubble
       ]}>
-        <Text style={styles.messageText}>{messageTextParts}</Text>
+        <Text style={styles.MessageText}>{messageTextParts}</Text>
       </View>
     );
   };
@@ -204,6 +204,7 @@ export default function ChatScreen() {
           >
             <Text style={styles.sendButtonText}>
               {isLoading ? '...' : 'Enviar'}
+
             </Text>
           </TouchableOpacity>
           {!userPhoneNumber && (
@@ -259,7 +260,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderBottomLeftRadius: 5,
   },
-  messageText: {
+  MessageText: {
     fontSize: 16,
     color: '#000',
   },
@@ -289,7 +290,7 @@ const styles = StyleSheet.create({
 
   },
   sendButton: {
-    backgroundColor: '#465575',
+    backgroundColor: '#5497f0',
     paddingVertical: 12,
     paddingHorizontal: 20,
     borderRadius: 25,

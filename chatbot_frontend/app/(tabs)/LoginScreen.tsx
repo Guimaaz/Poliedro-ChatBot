@@ -1,5 +1,4 @@
-//testada
-import React, { useState, useEffect, useRef } from 'react'; 
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, SafeAreaView, useWindowDimensions, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
@@ -9,6 +8,22 @@ import { RootStackParamList } from '../../navigation';
 
 type LoginScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'LoginScreen'>;
 
+const formatPhoneNumber = (text: string) => {
+  const cleaned = text.replace(/\D/g, '');
+const maxLength = 11;
+  const truncated = cleaned.substring(0, maxLength);
+  let formatted = '';
+  if (truncated.length === 0) return '';
+  if (truncated.length <= 2) {
+    formatted = `(${truncated}`;
+  } else if (truncated.length <= 7) {
+    formatted = `(${truncated.substring(0, 2)}) ${truncated.substring(2)}`;
+  } else {
+    formatted = `(${truncated.substring(0, 2)}) ${truncated.substring(2, 7)}-${truncated.substring(7)}`;
+  }
+  return formatted;
+};
+
 export default function LoginScreen() {
   const [telefone, setTelefone] = useState('');
   const [senha, setSenha] = useState('');
@@ -17,16 +32,15 @@ export default function LoginScreen() {
   const inputWidth = width < 600 ? width * 0.7 : 300;
   const containerWidth = width < 600 ? width * 0.9 : 500;
   const navigation = useNavigation<LoginScreenNavigationProp>();
-  const senhaInputRef = useRef<TextInput>(null); 
+  const senhaInputRef = useRef<TextInput>(null);
 
   const handleLogin = async () => {
     if (!telefone || !senha) {
       Alert.alert('Erro', 'Por favor, preencha todos os campos.');
       return;
     }
-
-    setLoadingLogin(true);
     console.log('Fazendo requisição de login...', { numero_cliente: telefone, senha });
+    setLoadingLogin(true);
     try {
       const response = await fetch(`${API_BASE_URL}/login`, {
         method: 'POST',
@@ -39,14 +53,12 @@ export default function LoginScreen() {
       console.log('Resposta bruta da API de login:', response);
       const data = await response.json();
       console.log('Dados da resposta da API de login:', data);
-      console.log('Tipo de data.is_admin:', typeof data.is_admin); 
+      console.log('Tipo de data.is_admin:', typeof data.is_admin);
 
       if (response.ok && data.success) {
         await AsyncStorage.setItem('userPhoneNumber', telefone);
         Alert.alert('Sucesso', 'Login realizado com sucesso!');
-
         console.log('Valor de data.is_admin antes da navegação:', data.is_admin);
-
         if (data.is_admin === 1) {
           console.log('Navegando para AdminHomeScreen');
           navigation.navigate('AdminHomeScreen');
@@ -69,13 +81,11 @@ export default function LoginScreen() {
     navigation.navigate('RegisterScreen');
   };
 
- 
   useEffect(() => {
     const checkPhoneNumber = async () => {
       const phoneNumber = await AsyncStorage.getItem('userPhoneNumber');
       console.log('Número de telefone no AsyncStorage:', phoneNumber);
     };
-
     checkPhoneNumber();
   }, []);
 
@@ -89,21 +99,19 @@ export default function LoginScreen() {
             resizeMode="contain"
           />
         </View>
-
         <View style={styles.loginContainer}>
           <Text style={styles.title}>Login</Text>
-
           <TextInput
             style={[styles.input, { width: inputWidth }]}
             placeholder="Número de telefone"
             keyboardType="numbers-and-punctuation"
             value={telefone}
-            onChangeText={setTelefone}
+            onChangeText={text => setTelefone(formatPhoneNumber(text))}
+            maxLength={15} 
             returnKeyType="next"
             onSubmitEditing={() => senhaInputRef.current?.focus()}
             placeholderTextColor="#000"
           />
-
           <TextInput
             ref={senhaInputRef}
             style={[styles.input, { width: inputWidth }]}
@@ -112,19 +120,16 @@ export default function LoginScreen() {
             value={senha}
             onChangeText={setSenha}
             returnKeyType="done"
-            onSubmitEditing={handleLogin} 
+            onSubmitEditing={handleLogin}
             placeholderTextColor="#000"
           />
-
           <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={loadingLogin}>
             <Text style={styles.buttonText}>{loadingLogin ? 'Entrando...' : 'Entrar'}</Text>
           </TouchableOpacity>
-
           <TouchableOpacity onPress={navigateToRegister} style={styles.registerLinkContainer}>
             <Text style={styles.registerLinkText}>Não tem uma conta? Cadastre-se</Text>
           </TouchableOpacity>
         </View>
-
         <View style={styles.bottomRounded} />
       </View>
     </SafeAreaView>
@@ -169,7 +174,6 @@ const styles = StyleSheet.create({
     fontSize: 28,
     marginBottom: 40,
     color: '#000',
-    fontFamily: "Cal Sans"
   },
   input: {
     height: 50,
@@ -178,10 +182,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     fontSize: 16,
     marginBottom: 20,
+    color: '#000', 
   },
   button: {
     width: 150,
-    backgroundColor: '#5C75A7',
+    backgroundColor: '#5497f0',
     paddingVertical: 12,
     borderRadius: 25,
     alignItems: 'center',
@@ -193,7 +198,7 @@ const styles = StyleSheet.create({
   },
   bottomRounded: {
     height: 50,
-    backgroundColor: '#5C75A7',
+    backgroundColor: '#54977', 
   },
   registerLinkContainer: {
     marginTop: 20,
