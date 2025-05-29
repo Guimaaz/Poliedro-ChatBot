@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, SafeAreaView, useWindowDimensions, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, SafeAreaView, useWindowDimensions, Alert, ScrollView } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import { API_BASE_URL } from '../../utils/api';
@@ -10,7 +10,7 @@ type LoginScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, '
 
 const formatPhoneNumber = (text: string) => {
   const cleaned = text.replace(/\D/g, '');
-const maxLength = 11;
+  const maxLength = 11;
   const truncated = cleaned.substring(0, maxLength);
   let formatted = '';
   if (truncated.length === 0) return '';
@@ -28,6 +28,11 @@ export default function LoginScreen() {
   const [telefone, setTelefone] = useState('');
   const [senha, setSenha] = useState('');
   const [loadingLogin, setLoadingLogin] = useState(false);
+
+  const [telefoneError, setTelefoneError] = useState('');
+  const [senhaError, setSenhaError] = useState('');
+  const [loginApiError, setLoginApiError] = useState('');
+
   const { width } = useWindowDimensions();
   const inputWidth = width < 600 ? width * 0.7 : 300;
   const containerWidth = width < 600 ? width * 0.9 : 500;
@@ -35,11 +40,31 @@ export default function LoginScreen() {
   const senhaInputRef = useRef<TextInput>(null);
 
   const handleLogin = async () => {
-    if (!telefone || !senha) {
-      Alert.alert('Erro', 'Por favor, preencha todos os campos.');
+    setTelefoneError('');
+    setSenhaError('');
+    setLoginApiError('');
+
+    let isValid = true;
+    const limpatelefone = telefone.replace(/\D/g, '');
+
+    if (!telefone) {
+      setTelefoneError('Por favor, preencha o número de telefone.');
+      isValid = false;
+    }
+    else if (limpatelefone.length < 11) {
+      setTelefoneError('Número de telefone inválido.');
+      isValid = false;
+    }
+
+    if (!senha) {
+      setSenhaError('Por favor, preencha a senha.');
+      isValid = false;
+    }
+
+    if (!isValid) {
       return;
     }
-    console.log('Fazendo requisição de login...', { numero_cliente: telefone, senha });
+
     setLoadingLogin(true);
     try {
       const response = await fetch(`${API_BASE_URL}/login`, {
@@ -50,28 +75,21 @@ export default function LoginScreen() {
         body: JSON.stringify({ numero_cliente: telefone, senha }),
       });
 
-      console.log('Resposta bruta da API de login:', response);
       const data = await response.json();
-      console.log('Dados da resposta da API de login:', data);
-      console.log('Tipo de data.is_admin:', typeof data.is_admin);
-
       if (response.ok && data.success) {
         await AsyncStorage.setItem('userPhoneNumber', telefone);
         Alert.alert('Sucesso', 'Login realizado com sucesso!');
-        console.log('Valor de data.is_admin antes da navegação:', data.is_admin);
         if (data.is_admin === 1) {
-          console.log('Navegando para AdminHomeScreen');
           navigation.navigate('AdminHomeScreen');
         } else {
-          console.log('Navegando para ChatScreen');
           navigation.navigate('ChatScreen');
         }
       } else {
-        Alert.alert('Erro', data.message || 'Falha ao realizar o login. Verifique suas credenciais.');
+        setLoginApiError(data.message || 'Falha ao realizar o login. Verifique suas credenciais.');
       }
     } catch (error) {
       console.error('Erro ao realizar login:', error);
-      Alert.alert('Erro', 'Ocorreu um erro ao comunicar com o servidor.');
+      setLoginApiError('Ocorreu um erro ao comunicar com o servidor.');
     } finally {
       setLoadingLogin(false);
     }
@@ -91,47 +109,77 @@ export default function LoginScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View style={[styles.container, { width: containerWidth }]}>
-        <View style={styles.topContainer}>
-          <Image
-            source={require('../../assets/images/logopoliedro.png')}
-            style={styles.logo}
-            resizeMode="contain"
-          />
+      <ScrollView
+        style={styles.mainScrollView}
+        contentContainerStyle={styles.mainScrollViewContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={[styles.container, { width: containerWidth }]}>
+          <View style={styles.topContainer}>
+            <Image
+              source={require('../../assets/images/logopoliedro.png')}
+              style={styles.logo}
+              resizeMode="contain"
+            />
+          </View>
+          <View style={styles.loginContainer}>
+            <Text style={styles.title}>Login</Text>
+
+            <View style={[styles.inputGroup, { width: inputWidth }]}>
+              <TextInput
+                style={styles.input}
+                placeholder="Número de telefone"
+                keyboardType="numbers-and-punctuation"
+                value={telefone}
+                onChangeText={text => {
+                  setTelefone(formatPhoneNumber(text));
+                  if (telefoneError) setTelefoneError('');
+                  if (loginApiError) setLoginApiError('');
+                }}
+                maxLength={15}
+                returnKeyType="next"
+                onSubmitEditing={() => senhaInputRef.current?.focus()}
+                placeholderTextColor="gray"
+              />
+              {telefoneError ? <Text style={styles.errorText}>{telefoneError}</Text> : null}
+            </View>
+
+            <View style={[styles.inputGroup, { width: inputWidth }]}>
+              <TextInput
+                ref={senhaInputRef}
+                style={styles.input}
+                placeholder="Senha"
+                secureTextEntry
+                value={senha}
+                onChangeText={text => {
+                  setSenha(text);
+                  if (senhaError) setSenhaError('');
+                  if (loginApiError) setLoginApiError('');
+                }}
+                returnKeyType="done"
+                onSubmitEditing={handleLogin}
+                placeholderTextColor="gray"
+              />
+              {senhaError ? <Text style={styles.errorText}>{senhaError}</Text> : null}
+            </View>
+            
+            {loginApiError ? <Text style={[styles.errorText, styles.apiError]}>{loginApiError}</Text> : null}
+
+            <TouchableOpacity 
+              style={[styles.button, { width: inputWidth > 250 ? inputWidth * 0.75 : inputWidth }]} 
+              onPress={handleLogin} 
+              disabled={loadingLogin}
+            >
+              <Text style={styles.buttonText}>{loadingLogin ? 'Entrando...' : 'Entrar'}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={navigateToRegister} style={styles.registerLinkContainer}>
+              <Text style={styles.registerLinkText}>Não tem uma conta? Cadastre-se</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.bottomRounded} />
         </View>
-        <View style={styles.loginContainer}>
-          <Text style={styles.title}>Login</Text>
-          <TextInput
-            style={[styles.input, { width: inputWidth }]}
-            placeholder="Número de telefone"
-            keyboardType="numbers-and-punctuation"
-            value={telefone}
-            onChangeText={text => setTelefone(formatPhoneNumber(text))}
-            maxLength={15} 
-            returnKeyType="next"
-            onSubmitEditing={() => senhaInputRef.current?.focus()}
-            placeholderTextColor="#000"
-          />
-          <TextInput
-            ref={senhaInputRef}
-            style={[styles.input, { width: inputWidth }]}
-            placeholder="Senha"
-            secureTextEntry
-            value={senha}
-            onChangeText={setSenha}
-            returnKeyType="done"
-            onSubmitEditing={handleLogin}
-            placeholderTextColor="#000"
-          />
-          <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={loadingLogin}>
-            <Text style={styles.buttonText}>{loadingLogin ? 'Entrando...' : 'Entrar'}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={navigateToRegister} style={styles.registerLinkContainer}>
-            <Text style={styles.registerLinkText}>Não tem uma conta? Cadastre-se</Text>
-          </TouchableOpacity>
-        </View>
-        <View style={styles.bottomRounded} />
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -141,16 +189,20 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#4B3D3D',
   },
-  container: {
+  mainScrollView: {
     flex: 1,
+  },
+  mainScrollViewContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+  },
+  container: {
     backgroundColor: '#e0e0e0',
-    borderTopLeftRadius: 30,
-    borderTopRightRadius: 30,
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
-    margin: 20,
+    borderRadius: 30,
+    marginVertical: 20,
+    marginHorizontal: 20,
     overflow: 'hidden',
-    alignSelf: 'center'
+    alignSelf: 'center',
   },
   topContainer: {
     backgroundColor: '#fff',
@@ -165,15 +217,22 @@ const styles = StyleSheet.create({
     height: 50,
   },
   loginContainer: {
-    flex: 1,
     alignItems: 'center',
-    justifyContent: 'center',
     paddingHorizontal: 20,
+    paddingTop: 30,
+    paddingBottom: 30,
   },
   title: {
     fontSize: 28,
-    marginBottom: 40,
+    marginBottom: 30, 
     color: '#000',
+    textAlign: 'center',
+  },
+  inputGroup: {
+    minHeight: 50 + 6 + 18,
+    marginBottom: 20,
+    alignItems: 'flex-start',
+    justifyContent: 'flex-start',
   },
   input: {
     height: 50,
@@ -181,16 +240,27 @@ const styles = StyleSheet.create({
     borderRadius: 25,
     paddingHorizontal: 20,
     fontSize: 16,
-    marginBottom: 20,
-    color: '#000', 
+    color: '#000',
+    width: '100%',
+  },
+  errorText: {
+    color: 'red',
+    fontSize: 12,
+    marginTop: 6,
+    paddingLeft: 20, 
+  },
+  apiError: {
+    textAlign: 'center',
+    width: '100%', 
+    marginBottom: 15,
+    marginTop: -10, 
   },
   button: {
-    width: 150,
     backgroundColor: '#5497f0',
     paddingVertical: 12,
     borderRadius: 25,
     alignItems: 'center',
-    marginTop: 10,
+    marginTop: 10, 
   },
   buttonText: {
     color: '#fff',
@@ -198,10 +268,10 @@ const styles = StyleSheet.create({
   },
   bottomRounded: {
     height: 50,
-    backgroundColor: '#54977', 
+    backgroundColor: '#5497f0',
   },
   registerLinkContainer: {
-    marginTop: 20,
+    marginTop: 25,
   },
   registerLinkText: {
     color: '#5C75A7',
