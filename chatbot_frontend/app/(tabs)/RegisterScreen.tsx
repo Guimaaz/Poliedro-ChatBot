@@ -40,7 +40,7 @@ export default function RegisterScreen() {
 
   const handleRegister = async () => {
     let isValid = true;
-    const cleanedPhone = telefone.replace(/\D/g, '');
+    const cleanedPhone = telefone;
 
     setTelefoneError('');
     setSenhaError('');
