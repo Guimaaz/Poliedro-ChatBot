@@ -1,5 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, SafeAreaView, useWindowDimensions, Alert } from 'react-native';
+import {
+  View, Text, TextInput, TouchableOpacity, StyleSheet,
+  Image, SafeAreaView, useWindowDimensions, Alert
+} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import { API_BASE_URL } from '../../utils/api';
@@ -10,7 +13,7 @@ type LoginScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, '
 
 const formatPhoneNumber = (text: string) => {
   const cleaned = text.replace(/\D/g, '');
-const maxLength = 11;
+  const maxLength = 11;
   const truncated = cleaned.substring(0, maxLength);
   let formatted = '';
   if (truncated.length === 0) return '';
@@ -28,6 +31,10 @@ export default function LoginScreen() {
   const [telefone, setTelefone] = useState('');
   const [senha, setSenha] = useState('');
   const [loadingLogin, setLoadingLogin] = useState(false);
+
+  const [telefoneError, setTelefoneError] = useState('');
+  const [senhaError, setSenhaError] = useState('');
+
   const { width } = useWindowDimensions();
   const inputWidth = width < 600 ? width * 0.7 : 300;
   const containerWidth = width < 600 ? width * 0.9 : 500;
@@ -35,11 +42,29 @@ export default function LoginScreen() {
   const senhaInputRef = useRef<TextInput>(null);
 
   const handleLogin = async () => {
-    if (!telefone || !senha) {
-      Alert.alert('Erro', 'Por favor, preencha todos os campos.');
+    let isValid = true;
+    const cleanedPhone = telefone.replace(/\D/g, '');
+
+    setTelefoneError('');
+    setSenhaError('');
+
+    if (!telefone) {
+      setTelefoneError('Por favor, preencha o número de telefone.');
+      isValid = false;
+    } else if (cleanedPhone.length < 11) {
+        setTelefoneError('Número de telefone deve ter 11 dígitos.');
+        isValid = false;
+    }
+
+    if (!senha) {
+      setSenhaError('Por favor, preencha a senha.');
+      isValid = false;
+    }
+
+    if (!isValid) {
       return;
     }
-    console.log('Fazendo requisição de login...', { numero_cliente: telefone, senha });
+
     setLoadingLogin(true);
     try {
       const response = await fetch(`${API_BASE_URL}/login`, {
@@ -47,30 +72,24 @@ export default function LoginScreen() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ numero_cliente: telefone, senha }),
+        body: JSON.stringify({ numero_cliente: cleanedPhone, senha }),
       });
 
-      console.log('Resposta bruta da API de login:', response);
       const data = await response.json();
-      console.log('Dados da resposta da API de login:', data);
-      console.log('Tipo de data.is_admin:', typeof data.is_admin);
 
       if (response.ok && data.success) {
-        await AsyncStorage.setItem('userPhoneNumber', telefone);
+        await AsyncStorage.setItem('userPhoneNumber', cleanedPhone);
         Alert.alert('Sucesso', 'Login realizado com sucesso!');
-        console.log('Valor de data.is_admin antes da navegação:', data.is_admin);
         if (data.is_admin === 1) {
-          console.log('Navegando para AdminHomeScreen');
           navigation.navigate('AdminHomeScreen');
         } else {
-          console.log('Navegando para ChatScreen');
           navigation.navigate('ChatScreen');
         }
       } else {
         Alert.alert('Erro', data.message || 'Falha ao realizar o login. Verifique suas credenciais.');
       }
     } catch (error) {
-      console.error('Erro ao realizar login:', error);
+      console.error('Erro ao comunicar com o servidor:', error);
       Alert.alert('Erro', 'Ocorreu um erro ao comunicar com o servidor.');
     } finally {
       setLoadingLogin(false);
@@ -101,28 +120,43 @@ export default function LoginScreen() {
         </View>
         <View style={styles.loginContainer}>
           <Text style={styles.title}>Login</Text>
-          <TextInput
-            style={[styles.input, { width: inputWidth }]}
-            placeholder="Número de telefone"
-            keyboardType="numbers-and-punctuation"
-            value={telefone}
-            onChangeText={text => setTelefone(formatPhoneNumber(text))}
-            maxLength={15} 
-            returnKeyType="next"
-            onSubmitEditing={() => senhaInputRef.current?.focus()}
-            placeholderTextColor="#000"
-          />
-          <TextInput
-            ref={senhaInputRef}
-            style={[styles.input, { width: inputWidth }]}
-            placeholder="Senha"
-            secureTextEntry
-            value={senha}
-            onChangeText={setSenha}
-            returnKeyType="done"
-            onSubmitEditing={handleLogin}
-            placeholderTextColor="#000"
-          />
+
+          <View style={[styles.inputWrapper, { width: inputWidth }]}>
+            <TextInput
+              style={styles.input}
+              placeholder="Número de telefone"
+              keyboardType="numbers-and-punctuation"
+              value={telefone}
+              onChangeText={text => {
+                setTelefone(formatPhoneNumber(text));
+                if (telefoneError) setTelefoneError('');
+              }}
+              maxLength={15}
+              returnKeyType="next"
+              onSubmitEditing={() => senhaInputRef.current?.focus()}
+              placeholderTextColor="#000"
+            />
+            {telefoneError ? <Text style={styles.errorText}>{telefoneError}</Text> : null}
+          </View>
+
+          <View style={[styles.inputWrapper, { width: inputWidth }]}>
+            <TextInput
+              ref={senhaInputRef}
+              style={styles.input}
+              placeholder="Senha"
+              secureTextEntry
+              value={senha}
+              onChangeText={text => {
+                setSenha(text);
+                if (senhaError) setSenhaError('');
+              }}
+              returnKeyType="done"
+              onSubmitEditing={handleLogin}
+              placeholderTextColor="#000"
+            />
+            {senhaError ? <Text style={styles.errorText}>{senhaError}</Text> : null}
+          </View>
+
           <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={loadingLogin}>
             <Text style={styles.buttonText}>{loadingLogin ? 'Entrando...' : 'Entrar'}</Text>
           </TouchableOpacity>
@@ -144,10 +178,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#e0e0e0',
-    borderTopLeftRadius: 30,
-    borderTopRightRadius: 30,
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
+    borderRadius: 30,
     margin: 20,
     overflow: 'hidden',
     alignSelf: 'center'
@@ -175,14 +206,25 @@ const styles = StyleSheet.create({
     marginBottom: 40,
     color: '#000',
   },
+  inputWrapper: {
+    marginBottom: 20,
+    width: '100%',
+    alignItems: 'flex-start',
+  },
   input: {
     height: 50,
     backgroundColor: '#fff',
     borderRadius: 25,
     paddingHorizontal: 20,
     fontSize: 16,
-    marginBottom: 20,
-    color: '#000', 
+    color: '#000',
+    width: '100%',
+  },
+  errorText: {
+    color: 'red',
+    fontSize: 12,
+    marginTop: 6,
+    paddingLeft: 20,
   },
   button: {
     width: 150,
@@ -198,7 +240,7 @@ const styles = StyleSheet.create({
   },
   bottomRounded: {
     height: 50,
-    backgroundColor: '#54977', 
+    backgroundColor: '#5497f0',
   },
   registerLinkContainer: {
     marginTop: 20,

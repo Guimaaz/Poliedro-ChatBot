@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, SafeAreaView, useWindowDimensions, Alert, ScrollView } from 'react-native'; // Adicionado ScrollView
+import {
+  View, Text, TextInput, TouchableOpacity, StyleSheet,
+  Image, SafeAreaView, useWindowDimensions, Alert
+} from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { API_BASE_URL } from '../../utils/api';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -36,11 +39,12 @@ export default function RegisterScreen() {
   const { width } = useWindowDimensions();
   const inputWidth = width < 600 ? width * 0.7 : 300;
   const containerWidth = width < 600 ? width * 0.9 : 500;
+
   const navigation = useNavigation<RegisterScreenNavigationProp>();
 
   const handleRegister = async () => {
     let isValid = true;
-    const cleanedPhone = telefone;
+    const cleanedPhone = telefone.replace(/\D/g, '');
 
     setTelefoneError('');
     setSenhaError('');
@@ -80,14 +84,17 @@ export default function RegisterScreen() {
         },
         body: JSON.stringify({ numero_cliente: cleanedPhone, senha }),
       });
+
       const data = await response.json();
+
       if (response.ok && data.success) {
         Alert.alert('Sucesso', data.message || 'Cadastro realizado com sucesso!');
         navigation.navigate('LoginScreen');
       } else {
-        Alert.alert('Erro', data.message || 'Falha ao realizar o cadastro.');
+        Alert.alert('Erro', data.message || 'Falha ao realizar o cadastro. Tente novamente.');
       }
     } catch (error) {
+      console.error('Erro ao comunicar com o servidor:', error);
       Alert.alert('Erro', 'Ocorreu um erro ao comunicar com o servidor.');
     } finally {
       setLoadingRegister(false);
@@ -100,87 +107,79 @@ export default function RegisterScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <ScrollView
-        style={styles.mainScrollView}
-        contentContainerStyle={styles.mainScrollViewContent}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-      >
-        <View style={[styles.container, { width: containerWidth }]}>
-          <View style={styles.topContainer}>
-            <Image
-              source={require('../../assets/images/logopoliedro.png')}
-              style={styles.logo}
-              resizeMode="contain"
-            />
-          </View>
-
-          <View style={styles.registerContainer}>
-            <Text style={styles.title}>Cadastro</Text>
-
-            <View style={[styles.inputGroup, { width: inputWidth }]}>
-              <TextInput
-                style={styles.input}
-                placeholder="Número de telefone"
-                keyboardType="numbers-and-punctuation"
-                value={telefone}
-                onChangeText={text => {
-                  setTelefone(formatPhoneNumber(text));
-                  if (telefoneError) setTelefoneError('');
-                }}
-                maxLength={15}
-                placeholderTextColor="gray"
-              />
-              {telefoneError ? <Text style={styles.errorText}>{telefoneError}</Text> : null}
-            </View>
-
-            <View style={[styles.inputGroup, { width: inputWidth }]}>
-              <TextInput
-                style={styles.input}
-                placeholder="Senha"
-                secureTextEntry
-                value={senha}
-                onChangeText={text => {
-                  setSenha(text);
-                  if (senhaError) setSenhaError('');
-                  if (confirmarSenhaError && text === confirmarSenha) setConfirmarSenhaError('');
-                }}
-                placeholderTextColor="gray"
-              />
-              {senhaError ? <Text style={styles.errorText}>{senhaError}</Text> : null}
-            </View>
-
-            <View style={[styles.inputGroup, { width: inputWidth }]}>
-              <TextInput
-                style={styles.input}
-                placeholder="Confirmar Senha"
-                secureTextEntry
-                value={confirmarSenha}
-                onChangeText={text => {
-                  setConfirmarSenha(text);
-                  if (confirmarSenhaError) setConfirmarSenhaError('');
-                }}
-                placeholderTextColor="gray"
-              />
-              {confirmarSenhaError ? <Text style={styles.errorText}>{confirmarSenhaError}</Text> : null}
-            </View>
-
-            <TouchableOpacity
-              style={[styles.button, { width: inputWidth > 250 ? inputWidth * 0.75 : inputWidth }]}
-              onPress={handleRegister}
-              disabled={loadingRegister}
-            >
-              <Text style={styles.buttonText}>{loadingRegister ? 'Cadastrando...' : 'Cadastrar'}</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity onPress={navigateToLogin} style={styles.loginLinkContainer}>
-              <Text style={styles.loginLinkText}>Já tem uma conta? Faça login</Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.bottomRounded} />
+      <View style={[styles.container, { width: containerWidth }]}>
+        <View style={styles.topContainer}>
+          <Image
+            source={require('../../assets/images/logopoliedro.png')}
+            style={styles.logo}
+            resizeMode="contain"
+          />
         </View>
-      </ScrollView>
+
+        <View style={styles.registerContainer}>
+          <Text style={styles.title}>Cadastro</Text>
+
+          <View style={[styles.inputWrapper, { width: inputWidth }]}>
+            <TextInput
+              style={styles.input}
+              placeholder="Número de telefone"
+              keyboardType="numbers-and-punctuation"
+              value={telefone}
+              onChangeText={text => {
+                setTelefone(formatPhoneNumber(text));
+                if (telefoneError) setTelefoneError('');
+              }}
+              maxLength={15}
+              placeholderTextColor="#000"
+            />
+            {telefoneError ? <Text style={styles.errorText}>{telefoneError}</Text> : null}
+          </View>
+
+          <View style={[styles.inputWrapper, { width: inputWidth }]}>
+            <TextInput
+              style={styles.input}
+              placeholder="Senha"
+              secureTextEntry
+              value={senha}
+              onChangeText={text => {
+                setSenha(text);
+                if (senhaError) setSenhaError('');
+              }}
+              placeholderTextColor="#000"
+            />
+            {senhaError ? <Text style={styles.errorText}>{senhaError}</Text> : null}
+          </View>
+
+          <View style={[styles.inputWrapper, { width: inputWidth }]}>
+            <TextInput
+              style={styles.input}
+              placeholder="Confirmar Senha"
+              secureTextEntry
+              value={confirmarSenha}
+              onChangeText={text => {
+                setConfirmarSenha(text);
+                if (confirmarSenhaError) setConfirmarSenhaError('');
+              }}
+              placeholderTextColor="#000"
+            />
+            {confirmarSenhaError ? <Text style={styles.errorText}>{confirmarSenhaError}</Text> : null}
+          </View>
+
+          <TouchableOpacity
+            style={styles.button}
+            onPress={handleRegister}
+            disabled={loadingRegister}
+          >
+            <Text style={styles.buttonText}>{loadingRegister ? 'Cadastrando...' : 'Cadastrar'}</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity onPress={navigateToLogin} style={styles.loginLinkContainer}>
+            <Text style={styles.loginLinkText}>Já tem uma conta? Faça login</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.bottomRounded} />
+      </View>
     </SafeAreaView>
   );
 }
@@ -190,17 +189,11 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#4B3D3D',
   },
-  mainScrollView: {
-    flex: 1,
-  },
-  mainScrollViewContent: {
-    flexGrow: 1,
-  },
   container: {
+    flex: 1,
     backgroundColor: '#e0e0e0',
     borderRadius: 30,
-    marginVertical: 20, 
-    marginHorizontal: 20, 
+    margin: 20,
     overflow: 'hidden',
     alignSelf: 'center',
   },
@@ -217,22 +210,21 @@ const styles = StyleSheet.create({
     height: 50,
   },
   registerContainer: {
+    flex: 1,
     alignItems: 'center',
+    justifyContent: 'center',
     paddingHorizontal: 20,
-    paddingTop: 25, 
-    paddingBottom: 30,
   },
   title: {
     fontSize: 28,
-    marginBottom: 30,
+    marginBottom: 40,
     color: '#000',
     textAlign: 'center',
   },
-  inputGroup: {
-    minHeight: 74,
+  inputWrapper: {
     marginBottom: 20,
+    width: '100%',
     alignItems: 'flex-start',
-    justifyContent: 'flex-start',
   },
   input: {
     height: 50,
@@ -250,6 +242,7 @@ const styles = StyleSheet.create({
     paddingLeft: 20,
   },
   button: {
+    width: 150,
     backgroundColor: '#5497f0',
     paddingVertical: 12,
     borderRadius: 25,
@@ -265,7 +258,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#5497f0',
   },
   loginLinkContainer: {
-    marginTop: 25,
+    marginTop: 20,
   },
   loginLinkText: {
     color: '#5C75A7',
