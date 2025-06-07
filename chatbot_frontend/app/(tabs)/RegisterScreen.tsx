@@ -44,7 +44,7 @@ export default function RegisterScreen() {
       return;
     }
 
-    const cleanedTelefone = telefone.replace(/\D/g, '');
+    const cleanedTelefone = telefone;
 
     setLoadingRegister(true);
     console.log('Fazendo requisição de cadastro...', { numero_cliente: cleanedTelefone, senha });
