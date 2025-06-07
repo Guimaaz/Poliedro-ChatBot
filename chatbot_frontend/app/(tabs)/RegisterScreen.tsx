@@ -35,6 +35,7 @@ export default function RegisterScreen() {
 
   const handleRegister = async () => {
     if (!telefone || !senha || !confirmarSenha) {
+      console.log('Erro', 'Por favor, preencha todos os campos.');
       Alert.alert('Erro', 'Por favor, preencha todos os campos.');
       return;
     }
