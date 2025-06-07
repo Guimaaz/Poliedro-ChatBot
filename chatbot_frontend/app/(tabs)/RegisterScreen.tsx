@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, SafeAreaView, useWindowDimensions, Alert, ScrollView } from 'react-native'; // Adicionado ScrollView
+import {
+  View, Text, TextInput, TouchableOpacity, StyleSheet,
+  Image, SafeAreaView, useWindowDimensions, Alert, ScrollView
+} from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { API_BASE_URL } from '../../utils/api';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -32,10 +35,12 @@ export default function RegisterScreen() {
   const [telefoneError, setTelefoneError] = useState('');
   const [senhaError, setSenhaError] = useState('');
   const [confirmarSenhaError, setConfirmarSenhaError] = useState('');
+  const [registerApiError, setRegisterApiError] = useState('');
 
   const { width } = useWindowDimensions();
   const inputWidth = width < 600 ? width * 0.7 : 300;
   const containerWidth = width < 600 ? width * 0.9 : 500;
+
   const navigation = useNavigation<RegisterScreenNavigationProp>();
 
   const handleRegister = async () => {
@@ -45,11 +50,14 @@ export default function RegisterScreen() {
     setTelefoneError('');
     setSenhaError('');
     setConfirmarSenhaError('');
+    setRegisterApiError('');
 
     if (!telefone) {
       setTelefoneError('Por favor, preencha o número de telefone.');
       isValid = false;
-    } else if (cleanedPhone.length < 11) {
+    } 
+   
+    else if (cleanedPhone.length < 11) { 
       setTelefoneError('Número de telefone deve ter 11 dígitos.');
       isValid = false;
     }
@@ -80,15 +88,18 @@ export default function RegisterScreen() {
         },
         body: JSON.stringify({ numero_cliente: cleanedPhone, senha }),
       });
+
       const data = await response.json();
+
       if (response.ok && data.success) {
         Alert.alert('Sucesso', data.message || 'Cadastro realizado com sucesso!');
         navigation.navigate('LoginScreen');
       } else {
-        Alert.alert('Erro', data.message || 'Falha ao realizar o cadastro.');
+        setRegisterApiError(data.message || 'Falha ao realizar o cadastro. Tente novamente.');
       }
     } catch (error) {
-      Alert.alert('Erro', 'Ocorreu um erro ao comunicar com o servidor.');
+      console.error('Erro ao comunicar com o servidor:', error);
+      setRegisterApiError('Ocorreu um erro ao comunicar com o servidor.');
     } finally {
       setLoadingRegister(false);
     }
@@ -127,9 +138,10 @@ export default function RegisterScreen() {
                 onChangeText={text => {
                   setTelefone(formatPhoneNumber(text));
                   if (telefoneError) setTelefoneError('');
+                  if (registerApiError) setRegisterApiError('');
                 }}
                 maxLength={15}
-                placeholderTextColor="gray"
+                placeholderTextColor="#000"
               />
               {telefoneError ? <Text style={styles.errorText}>{telefoneError}</Text> : null}
             </View>
@@ -143,9 +155,9 @@ export default function RegisterScreen() {
                 onChangeText={text => {
                   setSenha(text);
                   if (senhaError) setSenhaError('');
-                  if (confirmarSenhaError && text === confirmarSenha) setConfirmarSenhaError('');
+                  if (registerApiError) setRegisterApiError('');
                 }}
-                placeholderTextColor="gray"
+                placeholderTextColor="#000"
               />
               {senhaError ? <Text style={styles.errorText}>{senhaError}</Text> : null}
             </View>
@@ -159,14 +171,17 @@ export default function RegisterScreen() {
                 onChangeText={text => {
                   setConfirmarSenha(text);
                   if (confirmarSenhaError) setConfirmarSenhaError('');
+                  if (registerApiError) setRegisterApiError('');
                 }}
-                placeholderTextColor="gray"
+                placeholderTextColor="#000"
               />
               {confirmarSenhaError ? <Text style={styles.errorText}>{confirmarSenhaError}</Text> : null}
             </View>
 
+            {registerApiError ? <Text style={[styles.errorText, styles.apiError]}>{registerApiError}</Text> : null}
+
             <TouchableOpacity
-              style={[styles.button, { width: inputWidth > 250 ? inputWidth * 0.75 : inputWidth }]}
+              style={styles.button}
               onPress={handleRegister}
               disabled={loadingRegister}
             >
@@ -195,14 +210,17 @@ const styles = StyleSheet.create({
   },
   mainScrollViewContent: {
     flexGrow: 1,
+    justifyContent: 'center',
   },
   container: {
     backgroundColor: '#e0e0e0',
     borderRadius: 30,
-    marginVertical: 20, 
-    marginHorizontal: 20, 
+    marginVertical: 20,
+    marginHorizontal: 20,
     overflow: 'hidden',
     alignSelf: 'center',
+    height : '80%'
+
   },
   topContainer: {
     backgroundColor: '#fff',
@@ -219,8 +237,9 @@ const styles = StyleSheet.create({
   registerContainer: {
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 25, 
+    paddingTop: 30,
     paddingBottom: 30,
+    height : '80%'
   },
   title: {
     fontSize: 28,
@@ -249,7 +268,14 @@ const styles = StyleSheet.create({
     marginTop: 6,
     paddingLeft: 20,
   },
+  apiError: {
+    textAlign: 'center',
+    width: '100%',
+    marginBottom: 15,
+    marginTop: -10,
+  },
   button: {
+    width: 150,
     backgroundColor: '#5497f0',
     paddingVertical: 12,
     borderRadius: 25,
@@ -261,7 +287,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
   },
   bottomRounded: {
-    height: 50,
+    height: 100,
     backgroundColor: '#5497f0',
   },
   loginLinkContainer: {

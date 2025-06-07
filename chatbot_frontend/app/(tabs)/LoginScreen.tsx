@@ -50,8 +50,7 @@ export default function LoginScreen() {
     if (!telefone) {
       setTelefoneError('Por favor, preencha o número de telefone.');
       isValid = false;
-    }
-    else if (limpatelefone.length < 11) {
+    } else if (limpatelefone.length < 11) {
       setTelefoneError('Número de telefone inválido.');
       isValid = false;
     }
@@ -102,7 +101,6 @@ export default function LoginScreen() {
   useEffect(() => {
     const checkPhoneNumber = async () => {
       const phoneNumber = await AsyncStorage.getItem('userPhoneNumber');
-      console.log('Número de telefone no AsyncStorage:', phoneNumber);
     };
     checkPhoneNumber();
   }, []);
@@ -140,7 +138,7 @@ export default function LoginScreen() {
                 maxLength={15}
                 returnKeyType="next"
                 onSubmitEditing={() => senhaInputRef.current?.focus()}
-                placeholderTextColor="gray"
+                placeholderTextColor="#000"
               />
               {telefoneError ? <Text style={styles.errorText}>{telefoneError}</Text> : null}
             </View>
@@ -159,16 +157,16 @@ export default function LoginScreen() {
                 }}
                 returnKeyType="done"
                 onSubmitEditing={handleLogin}
-                placeholderTextColor="gray"
+                placeholderTextColor="#000"
               />
               {senhaError ? <Text style={styles.errorText}>{senhaError}</Text> : null}
             </View>
-            
+
             {loginApiError ? <Text style={[styles.errorText, styles.apiError]}>{loginApiError}</Text> : null}
 
-            <TouchableOpacity 
-              style={[styles.button, { width: inputWidth > 250 ? inputWidth * 0.75 : inputWidth }]} 
-              onPress={handleLogin} 
+            <TouchableOpacity
+              style={[styles.button, { width: inputWidth > 250 ? inputWidth * 0.75 : inputWidth }]}
+              onPress={handleLogin}
               disabled={loadingLogin}
             >
               <Text style={styles.buttonText}>{loadingLogin ? 'Entrando...' : 'Entrar'}</Text>
@@ -194,7 +192,7 @@ const styles = StyleSheet.create({
   },
   mainScrollViewContent: {
     flexGrow: 1,
-    justifyContent: 'center',
+    justifyContent: 'center', 
   },
   container: {
     backgroundColor: '#e0e0e0',
@@ -203,6 +201,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     overflow: 'hidden',
     alignSelf: 'center',
+    height : '80%'
   },
   topContainer: {
     backgroundColor: '#fff',
@@ -219,17 +218,18 @@ const styles = StyleSheet.create({
   loginContainer: {
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 30,
-    paddingBottom: 30,
+    paddingTop: 30, 
+    paddingBottom: 30, 
+    height : '80%'
   },
   title: {
     fontSize: 28,
-    marginBottom: 30, 
+    marginBottom: 30,
     color: '#000',
     textAlign: 'center',
   },
   inputGroup: {
-    minHeight: 50 + 6 + 18,
+    minHeight: 74,
     marginBottom: 20,
     alignItems: 'flex-start',
     justifyContent: 'flex-start',
@@ -247,13 +247,13 @@ const styles = StyleSheet.create({
     color: 'red',
     fontSize: 12,
     marginTop: 6,
-    paddingLeft: 20, 
+    paddingLeft: 20,
   },
   apiError: {
     textAlign: 'center',
-    width: '100%', 
+    width: '100%',
     marginBottom: 15,
-    marginTop: -10, 
+    marginTop: -10,
   },
   button: {
     backgroundColor: '#5497f0',
@@ -267,7 +267,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
   },
   bottomRounded: {
-    height: 50,
+    height: 100,
     backgroundColor: '#5497f0',
   },
   registerLinkContainer: {
