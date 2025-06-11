@@ -637,14 +637,14 @@ def admin_listar_pedidos():
     return jsonify({"nao_finalizados": nao_finalizados, "finalizados": finalizados})
 
 
-@app.route('/admin/pedidos/cliente/<pedido_id>/finalizar', methods=['POST'])
-def finalizar_pedidos_cliente_route(pedido_id):
-    resultado = finalizar_pedidos_cliente(pedido_id) 
+@app.route('/admin/pedidos/cliente/<pedido_sessao_id>/finalizar', methods=['POST'])
+def finalizar_pedidos_cliente_route(pedido_sessao_id):
+    resultado = finalizar_pedidos_cliente(pedido_sessao_id) 
     return jsonify(resultado), 200
 
-@app.route('/admin/pedidos/<pedido_id>/finalizar', methods=['POST'])
-def admin_finalizar_pedido(pedido_id):
-    mensagem = finalizar_pedido_admin(pedido_id)
+@app.route('/admin/pedidos/<pedido_sessao_id>/finalizar', methods=['POST'])
+def admin_finalizar_pedido(pedido_sessao_id):
+    mensagem = finalizar_pedido_admin(pedido_sessao_id)
     return jsonify({'message': mensagem})
 
 @app.route('/admin/pedidos/<pedido_id>/reabrir', methods=['POST'])
