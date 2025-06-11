@@ -637,9 +637,9 @@ def admin_listar_pedidos():
     return jsonify({"nao_finalizados": nao_finalizados, "finalizados": finalizados})
 
 
-@app.route('/admin/pedidos/cliente/<numero_cliente>/finalizar', methods=['POST'])
-def finalizar_pedidos_cliente_route(numero_cliente):
-    resultado = finalizar_pedidos_cliente(numero_cliente) 
+@app.route('/admin/pedidos/cliente/<pedido_id>/finalizar', methods=['POST'])
+def finalizar_pedidos_cliente_route(pedido_id):
+    resultado = finalizar_pedidos_cliente(pedido_id) 
     return jsonify(resultado), 200
 
 @app.route('/admin/pedidos/<pedido_id>/finalizar', methods=['POST'])
