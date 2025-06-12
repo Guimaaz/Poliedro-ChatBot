@@ -337,6 +337,7 @@ def buscar_pedidos_admin():
             "data_fim": p[5],
             "finalizado": True,
             "pedido_sessao_id": p[6]
+            
         })
 
     return {"nao_finalizados": pedidos_pendentes_formatados, "finalizados": pedidos_finalizados_formatados}

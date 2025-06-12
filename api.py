@@ -28,7 +28,7 @@ def extrair_intencao(texto):
         return match_pedido.group(1).upper()
     if re.search(r'\b(cardapio|menu|exibir|exiba|o que tem para comer|comida|bebida)\b', texto, re.IGNORECASE):
         return "VER_CARDAPIO"
-    if re.search(r'\b(quero comer|fazer pedido|pedir|gostaria de pedir|fome|pedir um|pedir uma)\b', texto, re.IGNORECASE):
+    if re.search(r'\b(quero comer|fazer pedido|pedir|gostaria de pedir|fome|pedir um|pedir uma|gostaria de fazer um pedido)\b', texto, re.IGNORECASE):
         return "FAZER_PEDIDO_GENERICO"
     
     return None
@@ -637,14 +637,14 @@ def admin_listar_pedidos():
     return jsonify({"nao_finalizados": nao_finalizados, "finalizados": finalizados})
 
 
-@app.route('/admin/pedidos/cliente/<numero_cliente>/finalizar', methods=['POST'])
-def finalizar_pedidos_cliente_route(numero_cliente):
-    resultado = finalizar_pedidos_cliente(numero_cliente) 
+@app.route('/admin/pedidos/cliente/<pedido_sessao_id>/finalizar', methods=['POST'])
+def finalizar_pedidos_cliente_route(pedido_sessao_id):
+    resultado = finalizar_pedidos_cliente(pedido_sessao_id) 
     return jsonify(resultado), 200
 
-@app.route('/admin/pedidos/<pedido_id>/finalizar', methods=['POST'])
-def admin_finalizar_pedido(pedido_id):
-    mensagem = finalizar_pedido_admin(pedido_id)
+@app.route('/admin/pedidos/<pedido_sessao_id>/finalizar', methods=['POST'])
+def admin_finalizar_pedido(pedido_sessao_id):
+    mensagem = finalizar_pedido_admin(pedido_sessao_id)
     return jsonify({'message': mensagem})
 
 @app.route('/admin/pedidos/<pedido_id>/reabrir', methods=['POST'])

@@ -69,5 +69,5 @@ Inicie o servidor
 
 ## Documentação
 
-[Documentação](https://link-da-documentação)
+[Documentação](https://docs.google.com/document/d/1e1_VjRCYPunwakwcAPl_OAYkvTiHtK4r/edit)
 
