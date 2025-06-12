@@ -219,7 +219,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     overflow: 'hidden',
     alignSelf: 'center',
-    height : '80%'
+    height : '90%'
 
   },
   topContainer: {
