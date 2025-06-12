@@ -31,5 +31,10 @@ itensCardapio = [
 
     ("Salada Caesar", 14.90, "Saladas", "Alface, croutons, parmesão e molho caesar"),
     ("Salada Tropical", 18.00, "Saladas", "Mix de folhas, frutas da época e molho de iogurte"),
-    ("Salada Caprese", 19.00, "Saladas", "Tomate, muçarela de búfala, manjericão e azeite")
+    ("Salada Caprese", 19.00, "Saladas", "Tomate, muçarela de búfala, manjericão e azeite"),
+
+    ("Coca-Cola", 6.00, "Bebidas", "Uma coca geladinha"),
+    ("Fanta-Uva", 6.00, "Bebidas", "Uma Fanta com gosto de uva"),
+    ("Suco de lata", 6.00, "Bebidas", "um delicioso suco de lata")
+
 ]

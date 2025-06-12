@@ -28,7 +28,7 @@ def extrair_intencao(texto):
         return match_pedido.group(1).upper()
     if re.search(r'\b(cardapio|menu|exibir|exiba|o que tem para comer|comida|bebida)\b', texto, re.IGNORECASE):
         return "VER_CARDAPIO"
-    if re.search(r'\b(quero comer|fazer pedido|pedir|gostaria de pedir|fome|pedir um|pedir uma|gostaria de fazer um pedido)\b', texto, re.IGNORECASE):
+    if re.search(r'\b(quero comer|fazer pedido|pedir|gostaria de pedir|fome|pedir um|pedir uma|gostaria de fazer um pedido| Vou querer | vou pedir)\b', texto, re.IGNORECASE):
         return "FAZER_PEDIDO_GENERICO"
     
     return None
@@ -44,7 +44,7 @@ def Multiplos_pedidos(user_input):
     """
     itens_input = []
     filtrar_itens_input = re.sub(r'\s+e\s+|\s*,\s*', ' DIVISOR ', user_input.lower())
-    palavras_irrelevantes = ["quero", "um", "uma", "me ve", "me vê", "pedir", "gostaria de", "por favor", "adicionar", "adicione", "e", "com", "favor"]
+    palavras_irrelevantes = ["quero", "um", "uma", "me ve", "me vê", "pedir", "gostaria de", "por favor", "adicionar", "adicione", "e", "com", "favor", "vou pedir", "vou querer"]
     desconsiderar = r'\b(?:' + '|'.join(map(re.escape, palavras_irrelevantes)) + r')\b'  
     filtrar_itens_input = re.sub(desconsiderar, '', filtrar_itens_input).strip()
     pedido_em_si = [p.strip() for p in filtrar_itens_input.split(' DIVISOR ') if p.strip()]
